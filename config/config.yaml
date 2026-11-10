@@ -1,0 +1,97 @@
+# ==============================================================================
+# AI Agent MCP Gateway - Configuration (Single Source of Truth - SSOT)
+# ==============================================================================
+
+session:
+  # OAuth access token lifetime in seconds (604800 = 7 days sliding window)
+  ttl: 604800
+  # OAuth 2.0 authorization code lifetime in seconds (3600 = 1 hour)
+  auth_code_ttl: 3600
+  # Refresh token lifetime in seconds (2592000 = 30 days)
+  refresh_token_ttl: 2592000
+  # Temporary ban duration for malicious scanners in seconds (3600 = 1 hour)
+  ip_ban_duration: 3600
+  # Developer Telemetry Buffer maximum entries in memory
+  dev_traffic_max_items: 100
+  # Terminal execution timeout in seconds before auto-backgrounding (60.0 = 1 minute)
+  terminal_timeout: 60.0
+  # Audit logs query default limit
+  audit_log_limit: 50
+
+server:
+  host: "0.0.0.0"
+  port: 3000
+  mcp_path: "/mcp"
+  ui_path: "/ui"
+  title: "Local AI Agent Gateway"
+  mcp_server_name: "Local-Agent-Bridge"
+  mcp_server_title: "Local Computer Agent Gateway"
+  mcp_server_description: "Bridge to access, create, edit files, execute terminal commands, and take desktop screenshots on the user's local PC."
+  enable_tailscale_funnel: true
+  allowed_cors_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+
+storage:
+  data_dir: "data"
+  db_path: "data/gateway.db"
+  client_secret_file: "data/client_secret.key"
+  workspace_dir: "workspace"
+
+auth:
+  client_id: "local-mcp"
+  client_secret: ""
+  allowed_redirect_domains:
+    - "claude.ai"
+    - "anthropic.com"
+    - "chatgpt.com"
+    - "openai.com"
+    - "google.com"
+    - "googleapis.com"
+    - "googleusercontent.com"
+    - "gemini.google.com"
+  allowed_local_redirect_hosts:
+    - "localhost"
+    - "127.0.0.1"
+    - "::1"
+
+security:
+  allowed_local_hosts:
+    - "127.0.0.1"
+    - "::1"
+    - "localhost"
+    - "testclient"
+  scanner_extensions:
+    - ".php"
+    - ".bak"
+    - ".old"
+    - ".save"
+    - ".orig"
+    - ".yml"
+    - ".yaml"
+    - ".env"
+    - ".config"
+    - ".xml"
+    - ".ini"
+    - "~"
+  scanner_prefixes:
+    - "/wp-"
+    - "/wordpress"
+    - "/vendor"
+    - "/sites"
+    - "/storage"
+    - "/token.json"
+    - "/auth.json"
+    - "/wgetrc"
+    - "/user_secrets"
+    - "/store"
+    - "/src/auth"
+    - "/web/auth"
+    - "/www/auth"
+    - "/ws-config"
+  silenced_log_prefixes:
+    - "/api/ui/state"
+    - "/api/ui/files"
+    - "/api/ui/dev"
+    - "/ws/ui"
+    - "/favicon.ico"

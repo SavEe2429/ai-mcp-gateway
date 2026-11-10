@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Report
+    url: https://github.com/SavEe2429/ai-mcp-gateway/blob/main/SECURITY.md
+    about: Please read SECURITY.md before reporting security vulnerabilities publicly.
+  - name: Documentation & User Manual
+    url: https://github.com/SavEe2429/ai-mcp-gateway/blob/main/Docs/public/index.md
+    about: Review user manuals, architecture, and MCP integration guides before opening a question.

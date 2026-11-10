@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report a bug, crash, or unexpected behavior in AI Agent MCP Gateway
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue. Please provide clear reproduction details below.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: Describe the unexpected behavior...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps or commands to reproduce the issue.
+      placeholder: |
+        1. Start the gateway via `ai-mcp-gateway.exe` or `uv run ai-mcp-gateway`
+        2. Send a request to `/mcp` or open `/ui`
+        3. Observe error...
+    validations:
+      required: true
+  - type: dropdown
+    id: distribution
+    attributes:
+      label: How are you running the gateway?
+      options:
+        - Windows Standalone (.exe)
+        - Source / uv (Python 3.14+)
+        - Python package (pip / wheel)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release version or commit hash (e.g., v1.0.0).
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: Windows 11 / Ubuntu 24.04 / macOS
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or error output
+      description: Paste console logs here. Please redact tokens or secrets!
+      render: shell

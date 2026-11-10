@@ -1,0 +1,22 @@
+printWidth: 100
+tabWidth: 4
+useTabs: false
+semi: true
+singleQuote: false
+trailingComma: "all"
+bracketSpacing: true
+arrowParens: "avoid"
+proseWrap: "always"
+endOfLine: "lf"
+
+overrides:
+  - files: "*.md"
+    options:
+      tabWidth: 2
+      proseWrap: "always"
+  - files:
+      - "*.yaml"
+      - "*.yml"
+      - "*.json"
+    options:
+      tabWidth: 2

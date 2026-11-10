@@ -1,0 +1,18 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.0.0] - 2026-11-10
+
+### Added
+- MCP Streamable HTTP (`POST /mcp`) server with session recovery, `/sse` compatibility rewrite, and OAuth 2.0 / 2.1 (`S256` PKCE, RFC 8414 / RFC 9728 metadata discovery).
+- Real-time localhost-locked Web Dashboard (`interfaces/ui/index.html`) with Server telemetry, Developer Traffic Inspector, HITL Manual Approval queue, External MCP Client Hub, and Security Shield / Banned IPs management.
+- Sandboxed workspace filesystem tools (`safe_path` traversal and symlink/junction prevention), terminal execution with auto-backgrounding, and desktop/window vision capture tools.
+- External MCP Client Manager supporting GitHub repository installation and stdio tool bridging for Python (`uv`) and Node.js (`npm`) servers.
+- Standalone Windows `.exe` packaging (`packaging/build.py`) with frozen-runtime path separation (`_MEIPASS` for read-only assets, executable directory for writable `data/` and `workspace/`).
+- Automated CI quality gate and multi-job GitHub Release workflow (`.github/workflows/ci.yml` and `.github/workflows/release.yml` building `onedir` Windows bundles), MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, Issue/PR templates, and dual-tier `Docs/` portal (`mkdocs.yml`).

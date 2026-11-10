@@ -1,0 +1,39 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+out/
+wheels/
+*.egg-info
+*.spec
+
+# Virtual environments & local env
+.venv
+.env
+.env.*
+!.env.example
+
+# Runtime database, logs & state storage
+data/
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# Image artifacts
+*.jpg
+*.jpeg
+*.png
+
+# Workspace user files (keep directory placeholder only)
+workspace/*
+!workspace/.gitkeep
+
+# Local AI skills & scratch files
+.agents/
+scratch/
+
+# Keep history change out of Git (preserve README guide)
+logbook/*
+!logbook/README.md

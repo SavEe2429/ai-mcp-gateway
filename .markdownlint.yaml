@@ -1,0 +1,19 @@
+default: true
+
+# Rule configuration
+MD007:
+  indent: 2
+
+MD013: false
+
+MD024:
+  siblings_only: true
+
+MD029:
+  style: "ordered"
+
+MD033: false
+
+MD034: false
+
+MD041: false

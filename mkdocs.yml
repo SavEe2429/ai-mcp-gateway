@@ -1,0 +1,31 @@
+site_name: AI Agent MCP Gateway
+site_description: Secure local MCP Streamable HTTP bridge with OAuth 2.1, Tailscale Funnel, and Web Dashboard
+repo_url: https://github.com/SavEe2429/ai-mcp-gateway
+repo_name: SavEe2429/ai-mcp-gateway
+docs_dir: Docs
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: public/index.md
+  - User Manual:
+      - Quick Start: public/manual/quick-start.md
+      - Dashboard User Guide: public/manual/dashboard-guide.md
+      - MCP Integration: public/manual/mcp-integration.md
+  - Release Notes:
+      - Index: public/release-notes/README.md
+      - v1.0.0: public/release-notes/v1.0.0.md
+  - Internal Engineering:
+      - System Architecture: internal/design/system-architecture.md
+      - Getting Started: internal/development/01.getting_started.md
+      - Environment & Config: internal/development/02.environment.md
+      - Coding Standards: internal/development/03.architecture.md
+      - Testing & QA: internal/development/04.testing.md
+      - Deployment & Releases: internal/development/05.deployment.md
+      - Troubleshooting: internal/development/06.troubleshooting.md
+      - Delivery Roadmap: internal/pm/roadmap.md

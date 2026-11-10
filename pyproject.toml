@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-mcp-gateway"
+version = "1.0.0"
+description = "Local AI Agent MCP Gateway with Tailscale Funnel, OAuth 2.1, and Real-time Dashboard"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.14"
+authors = [{ name = "SavEe2429" }]
+keywords = ["mcp", "fastapi", "ai-agent", "gateway", "oauth", "tailscale"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    "fastapi[standard]>=0.162.0",
+    "mcp>=2.3.0",
+    "mss>=10.2.0",
+    "pillow>=13.0.0",
+    "pyyaml>=6.0.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SavEe2429/ai-mcp-gateway"
+Repository = "https://github.com/SavEe2429/ai-mcp-gateway"
+Issues = "https://github.com/SavEe2429/ai-mcp-gateway/issues"
+
+[project.scripts]
+ai-mcp-gateway = "ai_mcp_gateway.cli:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pyinstaller>=6.22.3",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::pytest_asyncio.plugin.PytestDeprecationWarning",
+]
+
+[tool.uv]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+exclude = [".agents", "scratch", "workspace"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501", "W291", "W293"]

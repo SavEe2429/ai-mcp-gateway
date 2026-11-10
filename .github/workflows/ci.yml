@@ -1,0 +1,126 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  code-quality:
+    name: Code Quality (Lint & Lock)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv & Python 3.14
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --dev --frozen
+
+      - name: Run Ruff Lint
+        run: uv run ruff check src/ tests/ packaging/ templates/ .github/scripts/release/
+
+      - name: Check Lockfile Consistency
+        run: uv lock --check
+
+  test:
+    name: Test Suite (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv & Python 3.14
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --dev --frozen
+
+      - name: Run Pytest
+        run: uv run pytest
+
+      - name: Run Unittest
+        run: uv run python -m unittest discover tests
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: [code-quality, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: python-dist
+            os: ubuntu-latest
+          - target: windows-bundle
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv & Python 3.14
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --dev --frozen
+
+      - name: Build Python Wheel & Sdist
+        if: matrix.target == 'python-dist'
+        run: uv build --out-dir dist/
+
+      - name: Build Windows Bundle (onedir)
+        if: matrix.target == 'windows-bundle'
+        shell: pwsh
+        run: |
+          uv run python packaging/build.py --mode onedir
+          if (-not (Test-Path "out/ai-mcp-gateway/ai-mcp-gateway/ai-mcp-gateway.exe")) {
+            throw "Windows executable build output missing"
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "out/ai-mcp-gateway/ai-mcp-gateway/*" -DestinationPath "dist/ai-mcp-gateway-windows-x64.zip" -Force
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  summary:
+    name: CI Summary
+    needs: [code-quality, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write Workflow Summary
+        run: |
+          echo "### CI Quality Gate Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| code-quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| test | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Enforce Overall Gate
+        run: |
+          if [[ "${{ needs.code-quality.result }}" != "success" || "${{ needs.test.result }}" != "success" || "${{ needs.build.result }}" != "success" ]]; then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi

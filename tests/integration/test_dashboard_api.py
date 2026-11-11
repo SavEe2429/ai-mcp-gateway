@@ -4,6 +4,7 @@ import io
 import unittest
 from contextlib import redirect_stdout
 
+from ai_mcp_gateway.core.state import state
 from tests.integration.base import BaseIntegrationTestCase
 
 
@@ -14,17 +15,36 @@ class TestDashboardAPI(BaseIntegrationTestCase):
         res_ui = self.client.get("/ui")
         self.assertEqual(res_ui.status_code, 200)
         self.assertIn("AI Agent MCP Gateway", res_ui.text)
+        self.assertIn("showWorkspaceModal", res_ui.text)
 
         # Test JSON state
         res = self.client.get("/api/ui/state")
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn("state", data)
+        self.assertIn("workspace_configured", data["state"])
         self.assertIn("logs", data)
         self.assertIn("ai_usage", data)
         self.assertIn("Gemini", data["ai_usage"])
         self.assertIn("Claude", data["ai_usage"])
         self.assertIn("ChatGPT", data["ai_usage"])
+
+    def test_workspace_confirmation_flow(self):
+        """Verify initial workspace_configured state and confirmation via /api/ui/workspace."""
+        old_dir = state.workspace_dir
+        old_flag = state.workspace_configured
+        self.addCleanup(setattr, state, "workspace_dir", old_dir)
+        self.addCleanup(setattr, state, "workspace_configured", old_flag)
+
+        state.workspace_configured = False
+        res_initial = self.client.get("/api/ui/state")
+        self.assertEqual(res_initial.status_code, 200)
+        self.assertFalse(res_initial.json()["state"]["workspace_configured"])
+
+        res_confirm = self.client.post("/api/ui/workspace", json={"path": ""})
+        self.assertEqual(res_confirm.status_code, 200)
+        self.assertTrue(res_confirm.json()["workspace_configured"])
+        self.assertEqual(res_confirm.json()["workspace_dir"], old_dir)
 
     def test_user_action_endpoints(self):
         """Verify that user action endpoints update state and log user action."""
@@ -80,6 +100,17 @@ class TestDashboardAPI(BaseIntegrationTestCase):
             "/api/ui/state", headers={"Origin": "http://localhost:3000"}
         )
         self.assertEqual(res_local_origin.status_code, 200)
+
+    def test_dashboard_websocket_rejects_cross_origin(self):
+        """Verify /ws/ui rejects cross-origin WebSocket connections (CSWSH prevention)."""
+        from starlette.websockets import WebSocketDisconnect
+
+        with self.assertRaises(WebSocketDisconnect) as ctx:
+            with self.client.websocket_connect(
+                "/ws/ui", headers={"Origin": "https://evil.example.com"}
+            ):
+                pass
+        self.assertEqual(ctx.exception.code, 1008)
 
 
 if __name__ == "__main__":

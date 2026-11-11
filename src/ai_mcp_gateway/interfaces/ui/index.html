@@ -1,1069 +1,1625 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th" x-data="agentDashboard()" x-init="init()" :class="theme === 'dark' ? 'dark' : ''">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Agent MCP Gateway</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>AI Agent MCP Gateway</title>
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Alpine.js -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Lucide Icons -->
+        <script src="https://unpkg.com/lucide@0.469.0"></script>
+        <!-- Alpine.js -->
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            matte: {
-              950: '#0c0d0e',
-              900: '#131517',
-              850: '#1a1c1f',
-              800: '#22252a',
-              700: '#2e3238',
-              600: '#3f444d'
-            },
-            offwhite: {
-              50: '#FAF9F6',
-              100: '#F3F1EC',
-              200: '#E6E3DC',
-              300: '#D5D0C5'
+        <script>
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            matte: {
+                                950: "#0c0d0e",
+                                900: "#131517",
+                                850: "#1a1c1f",
+                                800: "#22252a",
+                                700: "#2e3238",
+                                600: "#3f444d",
+                            },
+                            offwhite: {
+                                50: "#FAF9F6",
+                                100: "#F3F1EC",
+                                200: "#E6E3DC",
+                                300: "#D5D0C5",
+                            },
+                        },
+                        borderRadius: {
+                            btn: "6px",
+                            card: "8px",
+                            input: "6px",
+                        },
+                    },
+                },
+            };
+        </script>
+
+        <style>
+            [x-cloak] {
+                display: none !important;
             }
-          },
-          borderRadius: {
-            'btn': '6px',
-            'card': '8px',
-            'input': '6px'
-          }
-        }
-      }
-    }
-  </script>
+            ::-webkit-scrollbar {
+                width: 5px;
+                height: 5px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #2e3238;
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #3f444d;
+            }
 
-  <style>
-    [x-cloak] { display: none !important; }
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #2e3238; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3f444d; }
+            .btn-interactive {
+                transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .btn-interactive:active {
+                transform: translateY(1px) scale(0.985);
+            }
+        </style>
+    </head>
 
-    .btn-interactive {
-      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .btn-interactive:active {
-      transform: translateY(1px) scale(0.985);
-    }
-  </style>
-</head>
+    <body
+        class="h-screen w-screen overflow-hidden flex flex-col font-sans antialiased transition-colors duration-200 bg-offwhite-50 text-neutral-800 dark:bg-matte-950 dark:text-neutral-200"
+    >
+        <!-- ================= TOP HEADER ================= -->
+        <header
+            class="h-14 shrink-0 border-b border-offwhite-200 dark:border-matte-800 bg-offwhite-100/90 dark:bg-matte-900/90 backdrop-blur px-4 flex items-center justify-between gap-4 z-20"
+        >
+            <!-- Left: Drawer Sidebar Toggle Button & Brand Title -->
+            <div class="flex items-center gap-3">
+                <button
+                    @click="sidebarOpen = !sidebarOpen; refreshIcons()"
+                    class="btn-interactive h-9 w-9 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 hover:bg-offwhite-200 dark:hover:bg-matte-800 active:bg-offwhite-300 dark:active:bg-matte-700 text-neutral-600 dark:text-neutral-300 flex items-center justify-center"
+                    title="เปิด/ปิด แถบควบคุมด้านข้าง (Toggle Sidebar)"
+                >
+                    <i data-lucide="panel-left-close" class="w-4 h-4" x-show="sidebarOpen"></i>
+                    <i
+                        data-lucide="panel-left-open"
+                        class="w-4 h-4"
+                        x-show="!sidebarOpen"
+                        x-cloak
+                    ></i>
+                </button>
 
-<body class="h-screen w-screen overflow-hidden flex flex-col font-sans antialiased transition-colors duration-200 bg-offwhite-50 text-neutral-800 dark:bg-matte-950 dark:text-neutral-200">
+                <div class="flex items-center gap-2.5">
+                    <div
+                        class="w-7 h-7 rounded-btn border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-500"
+                    >
+                        <i data-lucide="cpu" class="w-4 h-4"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span
+                            class="text-xs font-bold tracking-tight text-neutral-900 dark:text-neutral-100 uppercase font-mono"
+                            >MCP Gateway</span
+                        >
+                        <span
+                            class="text-[10px] text-neutral-500 font-mono -mt-0.5"
+                            x-text="wsConnected ? 'ONLINE • STREAMABLE HTTP' : 'DISCONNECTED'"
+                        ></span>
+                    </div>
+                </div>
+            </div>
 
-  <!-- ================= TOP HEADER ================= -->
-  <header class="h-14 shrink-0 border-b border-offwhite-200 dark:border-matte-800 bg-offwhite-100/90 dark:bg-matte-900/90 backdrop-blur px-4 flex items-center justify-between gap-4 z-20">
-
-    <!-- Left: Drawer Sidebar Toggle Button & Brand Title -->
-    <div class="flex items-center gap-3">
-      <button @click="sidebarOpen = !sidebarOpen; refreshIcons()"
-              class="btn-interactive h-9 w-9 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 hover:bg-offwhite-200 dark:hover:bg-matte-800 active:bg-offwhite-300 dark:active:bg-matte-700 text-neutral-600 dark:text-neutral-300 flex items-center justify-center"
-              title="เปิด/ปิด แถบควบคุมด้านข้าง (Toggle Sidebar)">
-        <i data-lucide="panel-left-close" class="w-4 h-4" x-show="sidebarOpen"></i>
-        <i data-lucide="panel-left-open" class="w-4 h-4" x-show="!sidebarOpen" x-cloak></i>
-      </button>
-
-      <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-btn border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-          <i data-lucide="cpu" class="w-4 h-4"></i>
-        </div>
-        <div class="flex flex-col">
-          <span class="text-xs font-bold tracking-tight text-neutral-900 dark:text-neutral-100 uppercase font-mono">MCP Gateway</span>
-          <span class="text-[10px] text-neutral-500 font-mono -mt-0.5" x-text="wsConnected ? 'ONLINE • STREAMABLE HTTP' : 'DISCONNECTED'"></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Center: Main Mode Toggle Pill (Server / Client Hub / Banned IPs) -->
-    <div class="flex items-center p-1 bg-offwhite-200/60 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-800 rounded-btn gap-1 shadow-inner">
-      <!-- Mode 1: MCP Server -->
-      <button @click="switchView('server')"
-              :class="currentView === 'server'
+            <!-- Center: Main Mode Toggle Pill (Server / Client Hub / Banned IPs) -->
+            <div
+                class="flex items-center p-1 bg-offwhite-200/60 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-800 rounded-btn gap-1 shadow-inner"
+            >
+                <!-- Mode 1: MCP Server -->
+                <button
+                    @click="switchView('server')"
+                    :class="currentView === 'server'
                 ? 'border-emerald-500/40 bg-white dark:bg-matte-850 text-emerald-700 dark:text-emerald-300 shadow-sm font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-offwhite-100 dark:hover:bg-matte-900'"
-              class="btn-interactive px-3.5 py-1.5 rounded-btn border text-xs font-medium flex items-center gap-2">
-        <i data-lucide="server" class="w-3.5 h-3.5" :class="currentView === 'server' ? 'text-emerald-500' : 'text-neutral-400'"></i>
-        <span>MCP Server</span>
-        <span class="w-1.5 h-1.5 rounded-full" :class="currentView === 'server' ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-400'"></span>
-      </button>
+                    class="btn-interactive px-3.5 py-1.5 rounded-btn border text-xs font-medium flex items-center gap-2"
+                >
+                    <i
+                        data-lucide="server"
+                        class="w-3.5 h-3.5"
+                        :class="currentView === 'server' ? 'text-emerald-500' : 'text-neutral-400'"
+                    ></i>
+                    <span>MCP Server</span>
+                    <span
+                        class="w-1.5 h-1.5 rounded-full"
+                        :class="currentView === 'server' ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-400'"
+                    ></span>
+                </button>
 
-      <!-- Mode 2: MCP Client Hub -->
-      <button @click="switchView('client')"
-              :class="currentView === 'client'
+                <!-- Mode 2: MCP Client Hub -->
+                <button
+                    @click="switchView('client')"
+                    :class="currentView === 'client'
                 ? 'border-sky-500/40 bg-white dark:bg-matte-850 text-sky-700 dark:text-sky-300 shadow-sm font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-offwhite-100 dark:hover:bg-matte-900'"
-              class="btn-interactive px-3.5 py-1.5 rounded-btn border text-xs font-medium flex items-center gap-2">
-        <i data-lucide="cable" class="w-3.5 h-3.5" :class="currentView === 'client' ? 'text-sky-500' : 'text-neutral-400'"></i>
-        <span>MCP Client Hub</span>
-        <span class="text-[10px] font-mono px-1.5 py-0.2 rounded border"
-              :class="currentView === 'client' ? 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'border-offwhite-300 dark:border-matte-800 bg-offwhite-100 dark:bg-matte-900 text-neutral-500'"
-              x-text="externalServers.length">
-        </span>
-      </button>
+                    class="btn-interactive px-3.5 py-1.5 rounded-btn border text-xs font-medium flex items-center gap-2"
+                >
+                    <i
+                        data-lucide="cable"
+                        class="w-3.5 h-3.5"
+                        :class="currentView === 'client' ? 'text-sky-500' : 'text-neutral-400'"
+                    ></i>
+                    <span>MCP Client Hub</span>
+                    <span
+                        class="text-[10px] font-mono px-1.5 py-0.2 rounded border"
+                        :class="currentView === 'client' ? 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'border-offwhite-300 dark:border-matte-800 bg-offwhite-100 dark:bg-matte-900 text-neutral-500'"
+                        x-text="externalServers.length"
+                    >
+                    </span>
+                </button>
 
-      <!-- Mode 3: Banned IPs Shield -->
-      <button @click="switchView('security')"
-              :class="currentView === 'security'
+                <!-- Mode 3: Banned IPs Shield -->
+                <button
+                    @click="switchView('security')"
+                    :class="currentView === 'security'
                 ? 'border-rose-500/40 bg-white dark:bg-matte-850 text-rose-700 dark:text-rose-300 shadow-sm font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-offwhite-100 dark:hover:bg-matte-900'"
-              class="btn-interactive px-3.5 py-1.5 rounded-btn border text-xs font-medium flex items-center gap-1.5">
-        <i data-lucide="shield-alert" class="w-3.5 h-3.5" :class="currentView === 'security' ? 'text-rose-500' : 'text-neutral-400'"></i>
-        <span>Banned IPs</span>
-        <span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-              x-text="bannedIps.length">
-        </span>
-      </button>
-    </div>
-
-    <!-- Right: Endpoint Copy & Theme -->
-    <div class="flex items-center gap-2">
-      <div class="hidden lg:flex items-center gap-2 bg-offwhite-50 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-800 rounded-btn px-2.5 py-1 text-xs font-mono">
-        <span class="text-neutral-400 uppercase text-[10px] font-bold">Endpoint:</span>
-        <code class="text-neutral-800 dark:text-neutral-200" x-text="showEndpoint ? config.mcp_url : maskEndpoint(config.mcp_url)"></code>
-        <button @click="showEndpoint = !showEndpoint"
-                class="btn-interactive text-[10px] px-1.5 py-0.5 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 dark:bg-matte-850 text-neutral-600 dark:text-neutral-300"
-                x-text="showEndpoint ? 'Hide' : 'Show'"></button>
-        <button @click="copyText(config.mcp_url, 'MCP Endpoint')"
-                class="btn-interactive text-[10px] px-2 py-0.5 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-neutral-800 hover:bg-neutral-700 text-offwhite-50 dark:bg-matte-800 dark:hover:bg-matte-700 dark:text-neutral-200 flex items-center gap-1">
-          <i data-lucide="copy" class="w-3 h-3"></i>
-          <span>Copy</span>
-        </button>
-      </div>
-
-      <button @click="toggleTheme(); refreshIcons()"
-              class="btn-interactive h-9 w-9 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 hover:bg-offwhite-200 dark:hover:bg-matte-800 text-neutral-600 dark:text-neutral-300 flex items-center justify-center">
-        <i data-lucide="sun" class="w-4 h-4" x-show="theme === 'dark'"></i>
-        <i data-lucide="moon" class="w-4 h-4" x-show="theme === 'light'" x-cloak></i>
-      </button>
-    </div>
-
-  </header>
-
-  <!-- ================= WORKSPACE BODY ================= -->
-  <div class="flex-1 flex overflow-hidden relative">
-
-    <!-- Collapsible Sidebar (Drawer) -->
-    <aside class="shrink-0 border-r border-offwhite-200 dark:border-matte-800 bg-offwhite-100/70 dark:bg-matte-900/60 transition-all duration-300 overflow-hidden flex flex-col"
-           :class="sidebarOpen ? 'w-80' : 'w-0 border-none'">
-      <div class="p-3.5 space-y-3.5 w-80 overflow-y-auto flex-1">
-
-        <!-- Sidebar Box 1: Workspace -->
-        <div class="bg-offwhite-50 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 space-y-2">
-          <div class="flex justify-between items-center text-xs font-semibold uppercase text-neutral-600 dark:text-neutral-400 tracking-wider">
-            <span class="flex items-center gap-1.5">
-              <i data-lucide="folder-git-2" class="w-3.5 h-3.5"></i>
-              Workspace
-            </span>
-            <button @click="browseFolder()" :disabled="browsing"
-                    class="btn-interactive text-[11px] px-2 py-0.5 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 hover:bg-offwhite-200 dark:bg-matte-850 dark:hover:bg-matte-800 text-neutral-700 dark:text-neutral-300">
-              <span x-text="browsing ? 'Opening...' : 'Browse'"></span>
-            </button>
-          </div>
-          <div class="flex gap-1.5">
-            <input type="text" x-model="workspaceInput" @keydown.enter="saveWorkspace()"
-                   class="w-full bg-offwhite-100 dark:bg-matte-900 border border-offwhite-300 dark:border-matte-800 rounded-input px-2 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:outline-none" />
-            <button @click="saveWorkspace()" class="btn-interactive shrink-0 text-xs px-2.5 py-1 rounded-btn border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white dark:bg-matte-800 dark:hover:bg-matte-700">Save</button>
-          </div>
-        </div>
-
-        <!-- Sidebar Box 2: Access Control -->
-        <div class="bg-offwhite-50 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 space-y-2">
-          <div class="flex justify-between items-center text-xs font-semibold uppercase text-neutral-600 dark:text-neutral-400 tracking-wider">
-            <span class="flex items-center gap-1.5">
-              <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-              Access Control
-            </span>
-            <span class="text-[10px] font-mono text-neutral-500" x-text="activePermissionsCount() + '/5 Active'"></span>
-          </div>
-
-          <div class="space-y-1.5 text-xs">
-            <template x-for="item in permissionItems" :key="item.key">
-              <div class="flex justify-between items-center py-1 border-b border-offwhite-200 dark:border-matte-900 last:border-b-0">
-                <span class="text-neutral-700 dark:text-neutral-300" x-text="item.label"></span>
-                <button @click="togglePermission(item.key)"
-                        :class="config.permissions[item.key] ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'border-offwhite-300 dark:border-matte-800 bg-offwhite-100 dark:bg-matte-900 text-neutral-400'"
-                        class="btn-interactive h-5 px-2 rounded-btn border text-[10px] font-mono flex items-center justify-center">
-                  <span x-text="config.permissions[item.key] ? 'ON' : 'OFF'"></span>
+                    class="btn-interactive px-3.5 py-1.5 rounded-btn border text-xs font-medium flex items-center gap-1.5"
+                >
+                    <i
+                        data-lucide="shield-alert"
+                        class="w-3.5 h-3.5"
+                        :class="currentView === 'security' ? 'text-rose-500' : 'text-neutral-400'"
+                    ></i>
+                    <span>Banned IPs</span>
+                    <span
+                        class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                        x-text="bannedIps.length"
+                    >
+                    </span>
                 </button>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- Sidebar Box 3: OAuth Credentials -->
-        <div class="bg-offwhite-50 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 space-y-2">
-          <span class="text-xs font-semibold uppercase text-neutral-600 dark:text-neutral-400 tracking-wider flex items-center gap-1.5">
-            <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
-            OAuth Credentials
-          </span>
-          <div class="space-y-2 text-xs font-mono">
-            <div>
-              <div class="text-[10px] text-neutral-400 mb-0.5">Client ID</div>
-              <div class="flex items-center justify-between bg-offwhite-100 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-850 rounded-input px-2 py-1 text-neutral-800 dark:text-neutral-200">
-                <span x-text="config.client_id"></span>
-                <button @click="copyText(config.client_id, 'Client ID')" class="btn-interactive text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-800 px-1.5 rounded-btn">Copy</button>
-              </div>
             </div>
-            <div>
-              <div class="text-[10px] text-neutral-400 mb-0.5">Client Secret</div>
-              <div class="flex items-center justify-between bg-offwhite-100 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-850 rounded-input px-2 py-1 text-neutral-800 dark:text-neutral-200">
-                <span x-text="showSecret ? config.client_secret : '••••••••••••••••••••'"></span>
-                <div class="flex gap-1">
-                  <button @click="showSecret = !showSecret" class="btn-interactive text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 px-1.5 rounded-btn" x-text="showSecret ? 'Hide' : 'Show'"></button>
-                  <button @click="copyText(config.client_secret, 'Client Secret')" class="btn-interactive text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 px-1.5 rounded-btn">Copy</button>
+
+            <!-- Right: Endpoint Copy & Theme -->
+            <div class="flex items-center gap-2">
+                <div
+                    class="hidden lg:flex items-center gap-2 bg-offwhite-50 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-800 rounded-btn px-2.5 py-1 text-xs font-mono"
+                >
+                    <span class="text-neutral-400 uppercase text-[10px] font-bold">Endpoint:</span>
+                    <code
+                        class="text-neutral-800 dark:text-neutral-200"
+                        x-text="showEndpoint ? config.mcp_url : maskEndpoint(config.mcp_url)"
+                    ></code>
+                    <button
+                        @click="showEndpoint = !showEndpoint"
+                        class="btn-interactive text-[10px] px-1.5 py-0.5 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 dark:bg-matte-850 text-neutral-600 dark:text-neutral-300"
+                        x-text="showEndpoint ? 'Hide' : 'Show'"
+                    ></button>
+                    <button
+                        @click="copyText(config.mcp_url, 'MCP Endpoint')"
+                        class="btn-interactive text-[10px] px-2 py-0.5 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-neutral-800 hover:bg-neutral-700 text-offwhite-50 dark:bg-matte-800 dark:hover:bg-matte-700 dark:text-neutral-200 flex items-center gap-1"
+                    >
+                        <i data-lucide="copy" class="w-3 h-3"></i>
+                        <span>Copy</span>
+                    </button>
                 </div>
-              </div>
+
+                <button
+                    @click="toggleTheme(); refreshIcons()"
+                    class="btn-interactive h-9 w-9 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 hover:bg-offwhite-200 dark:hover:bg-matte-800 text-neutral-600 dark:text-neutral-300 flex items-center justify-center"
+                >
+                    <i data-lucide="sun" class="w-4 h-4" x-show="theme === 'dark'"></i>
+                    <i data-lucide="moon" class="w-4 h-4" x-show="theme === 'light'" x-cloak></i>
+                </button>
             </div>
-          </div>
+        </header>
+
+        <!-- ================= WORKSPACE BODY ================= -->
+        <div class="flex-1 flex overflow-hidden relative">
+            <!-- Collapsible Sidebar (Drawer) -->
+            <aside
+                class="shrink-0 border-r border-offwhite-200 dark:border-matte-800 bg-offwhite-100/70 dark:bg-matte-900/60 transition-all duration-300 overflow-hidden flex flex-col"
+                :class="sidebarOpen ? 'w-80' : 'w-0 border-none'"
+            >
+                <div class="p-3.5 space-y-3.5 w-80 overflow-y-auto flex-1">
+                    <!-- Sidebar Box 1: Workspace -->
+                    <div
+                        class="bg-offwhite-50 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 space-y-2"
+                    >
+                        <div
+                            class="flex justify-between items-center text-xs font-semibold uppercase text-neutral-600 dark:text-neutral-400 tracking-wider"
+                        >
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="folder-git-2" class="w-3.5 h-3.5"></i>
+                                Workspace
+                            </span>
+                            <button
+                                @click="browseFolder()"
+                                :disabled="browsing"
+                                class="btn-interactive text-[11px] px-2 py-0.5 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 hover:bg-offwhite-200 dark:bg-matte-850 dark:hover:bg-matte-800 text-neutral-700 dark:text-neutral-300"
+                            >
+                                <span x-text="browsing ? 'Opening...' : 'Browse'"></span>
+                            </button>
+                        </div>
+                        <div class="flex gap-1.5">
+                            <input
+                                type="text"
+                                x-model="workspaceInput"
+                                @keydown.enter="saveWorkspace()"
+                                class="w-full bg-offwhite-100 dark:bg-matte-900 border border-offwhite-300 dark:border-matte-800 rounded-input px-2 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:outline-none"
+                            />
+                            <button
+                                @click="saveWorkspace()"
+                                class="btn-interactive shrink-0 text-xs px-2.5 py-1 rounded-btn border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white dark:bg-matte-800 dark:hover:bg-matte-700"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Box 2: Access Control -->
+                    <div
+                        class="bg-offwhite-50 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 space-y-2"
+                    >
+                        <div
+                            class="flex justify-between items-center text-xs font-semibold uppercase text-neutral-600 dark:text-neutral-400 tracking-wider"
+                        >
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                Access Control
+                            </span>
+                            <span
+                                class="text-[10px] font-mono text-neutral-500"
+                                x-text="activePermissionsCount() + '/5 Active'"
+                            ></span>
+                        </div>
+
+                        <div class="space-y-1.5 text-xs">
+                            <template x-for="item in permissionItems" :key="item.key">
+                                <div
+                                    class="flex justify-between items-center py-1 border-b border-offwhite-200 dark:border-matte-900 last:border-b-0"
+                                >
+                                    <span
+                                        class="text-neutral-700 dark:text-neutral-300"
+                                        x-text="item.label"
+                                    ></span>
+                                    <button
+                                        @click="togglePermission(item.key)"
+                                        :class="config.permissions[item.key] ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'border-offwhite-300 dark:border-matte-800 bg-offwhite-100 dark:bg-matte-900 text-neutral-400'"
+                                        class="btn-interactive h-5 px-2 rounded-btn border text-[10px] font-mono flex items-center justify-center"
+                                    >
+                                        <span
+                                            x-text="config.permissions[item.key] ? 'ON' : 'OFF'"
+                                        ></span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Box 3: OAuth Credentials -->
+                    <div
+                        class="bg-offwhite-50 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 space-y-2"
+                    >
+                        <span
+                            class="text-xs font-semibold uppercase text-neutral-600 dark:text-neutral-400 tracking-wider flex items-center gap-1.5"
+                        >
+                            <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+                            OAuth Credentials
+                        </span>
+                        <div class="space-y-2 text-xs font-mono">
+                            <div>
+                                <div class="text-[10px] text-neutral-400 mb-0.5">Client ID</div>
+                                <div
+                                    class="flex items-center justify-between bg-offwhite-100 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-850 rounded-input px-2 py-1 text-neutral-800 dark:text-neutral-200"
+                                >
+                                    <span x-text="config.client_id"></span>
+                                    <button
+                                        @click="copyText(config.client_id, 'Client ID')"
+                                        class="btn-interactive text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-800 px-1.5 rounded-btn"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-neutral-400 mb-0.5">Client Secret</div>
+                                <div
+                                    class="flex items-center justify-between bg-offwhite-100 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-850 rounded-input px-2 py-1 text-neutral-800 dark:text-neutral-200"
+                                >
+                                    <span
+                                        x-text="showSecret ? config.client_secret : '••••••••••••••••••••'"
+                                    ></span>
+                                    <div class="flex gap-1">
+                                        <button
+                                            @click="showSecret = !showSecret"
+                                            class="btn-interactive text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 px-1.5 rounded-btn"
+                                            x-text="showSecret ? 'Hide' : 'Show'"
+                                        ></button>
+                                        <button
+                                            @click="copyText(config.client_secret, 'Client Secret')"
+                                            class="btn-interactive text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-850 px-1.5 rounded-btn"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Box 4: Security Shield Quick View -->
+                    <div
+                        class="bg-rose-500/5 border border-rose-500/25 rounded-card p-3 space-y-1.5"
+                    >
+                        <div
+                            class="flex items-center justify-between text-xs font-bold text-rose-600 dark:text-rose-400"
+                        >
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                Shield Protection
+                            </span>
+                            <span
+                                class="text-[10px] font-mono bg-rose-500/15 px-1.5 py-0.5 rounded border border-rose-500/30"
+                                x-text="bannedIps.length + ' Banned'"
+                            ></span>
+                        </div>
+                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400">
+                            Auto-ban malicious scanners and PHP/Env probes
+                        </p>
+                        <button
+                            @click="switchView('security')"
+                            class="btn-interactive w-full text-center text-xs text-rose-600 dark:text-rose-300 hover:text-rose-800 dark:hover:text-white py-1 rounded-btn border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 flex items-center justify-center gap-1.5 mt-1"
+                        >
+                            <span>Open Banned List</span>
+                            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ================= MAIN VIEWPORT CONTENT ================= -->
+            <main class="flex-1 flex flex-col min-w-0 overflow-y-auto p-5">
+                <!-- ================= VIEW 1: MCP CLIENT HUB ================= -->
+                <div
+                    x-show="currentView === 'client'"
+                    x-cloak
+                    class="space-y-4 max-w-6xl mx-auto w-full"
+                >
+                    <!-- Title Banner -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2
+                                class="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2"
+                            >
+                                <i data-lucide="cable" class="w-5 h-5 text-sky-500"></i>
+                                External MCP Client Hub
+                            </h2>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                วาง GitHub URL ของ MCP Server จากภายนอก เพื่อดาวน์โหลด ติดตั้ง
+                                และเชื่อมต่อเครื่องมือเข้าสู่ Gateway อัตโนมัติ
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="text-xs font-mono px-2.5 py-1 rounded-btn border border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 flex items-center gap-1.5"
+                            >
+                                <i data-lucide="link" class="w-3.5 h-3.5"></i>
+                                Aggregator Bridge Active
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Quick GitHub Installer Card -->
+                    <div
+                        class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card p-4 space-y-3 shadow-md"
+                    >
+                        <div
+                            class="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center gap-2"
+                        >
+                            <i data-lucide="download-cloud" class="w-4 h-4 text-sky-500"></i>
+                            ติดตั้ง MCP ใหม่จาก GitHub
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+                            <div class="md:col-span-8">
+                                <div class="relative">
+                                    <span
+                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"
+                                    >
+                                        <i data-lucide="github" class="w-3.5 h-3.5"></i>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        x-model="newMcpUrl"
+                                        placeholder="https://github.com/modelcontextprotocol/servers/tree/main/src/fetch"
+                                        class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 hover:border-neutral-400 dark:hover:border-matte-600 focus:border-sky-500 rounded-input pl-9 pr-3 py-2 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 transition focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="md:col-span-4">
+                                <div class="relative">
+                                    <span
+                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"
+                                    >
+                                        <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        x-model="newMcpEnv"
+                                        placeholder="Environment: API_KEY=xyz, PORT=8080"
+                                        class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 hover:border-neutral-400 dark:hover:border-matte-600 focus:border-sky-500 rounded-input pl-9 pr-3 py-2 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 transition focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Custom Command & Args (Optional Collapsible) -->
+                        <div class="pt-1">
+                            <button
+                                @click="showAdvancedMcp = !showAdvancedMcp"
+                                type="button"
+                                class="text-[11px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                            >
+                                <i
+                                    data-lucide="chevron-right"
+                                    class="w-3 h-3 transition-transform"
+                                    :class="showAdvancedMcp ? 'rotate-90' : ''"
+                                ></i>
+                                <span>กำหนดคำสั่งรันเอง (Custom Command / Args - ไม่บังคับ)</span>
+                            </button>
+                            <div
+                                x-show="showAdvancedMcp"
+                                x-cloak
+                                class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-offwhite-200 dark:border-matte-850"
+                            >
+                                <div>
+                                    <label class="text-[10px] text-neutral-400 block mb-0.5"
+                                        >Command (เช่น uv, node, python):</label
+                                    >
+                                    <input
+                                        type="text"
+                                        x-model="customMcpCommand"
+                                        placeholder="เช่น uv หรือ node"
+                                        class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 rounded-input px-2.5 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-neutral-400 block mb-0.5"
+                                        >Arguments (เช่น run python src/server.py):</label
+                                    >
+                                    <input
+                                        type="text"
+                                        x-model="customMcpArgs"
+                                        placeholder="เช่น run python src/server.py"
+                                        class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 rounded-input px-2.5 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <div class="text-[11px] text-neutral-500 flex items-center gap-1.5">
+                                <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                                ระบบตรวจจับ Python (uv) / Node.js (npm) และเชื่อมต่อ Stdio
+                                ให้อัตโนมัติ
+                            </div>
+
+                            <button
+                                @click="installMcp()"
+                                :disabled="installingMcp"
+                                class="btn-interactive px-4 py-2 rounded-btn border border-sky-500/50 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                            >
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                <span
+                                    x-text="installingMcp ? 'Installing...' : 'Install & Connect'"
+                                ></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Installed External MCP List -->
+                    <div class="space-y-3">
+                        <div
+                            class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
+                        >
+                            <span
+                                >Installed External MCP Servers (<span
+                                    x-text="externalServers.length"
+                                ></span
+                                >)</span
+                            >
+                            <button
+                                @click="fetchExternalServers(); refreshIcons()"
+                                class="btn-interactive text-[11px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1"
+                            >
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                                <span>Refresh Status</span>
+                            </button>
+                        </div>
+
+                        <template x-if="externalServers.length === 0">
+                            <div
+                                class="p-8 text-center text-neutral-400 dark:text-neutral-500 border border-dashed border-offwhite-300 dark:border-matte-800 rounded-card bg-offwhite-100/40 dark:bg-matte-900/40"
+                            >
+                                <i data-lucide="cable" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                                <div
+                                    class="text-xs font-semibold text-neutral-600 dark:text-neutral-300"
+                                >
+                                    ยังไม่มี External MCP Server ติดตั้งอยู่
+                                </div>
+                                <div class="text-[11px] mt-1">
+                                    วาง GitHub URL ด้านบนเพื่อเริ่มติดตั้ง MCP Server ตัวแรกของคุณ
+                                </div>
+                            </div>
+                        </template>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+                            <template x-for="srv in externalServers" :key="srv.id">
+                                <div
+                                    class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 hover:border-offwhite-300 dark:hover:border-matte-700 transition rounded-card p-4 space-y-3 shadow-sm"
+                                >
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center gap-2.5">
+                                            <div
+                                                class="w-9 h-9 rounded-btn border border-sky-500/30 bg-sky-500/10 text-sky-500 flex items-center justify-center"
+                                            >
+                                                <i data-lucide="globe" class="w-4 h-4"></i>
+                                            </div>
+                                            <div>
+                                                <h3
+                                                    class="text-xs font-bold text-neutral-900 dark:text-neutral-100 font-mono"
+                                                    x-text="srv.name"
+                                                ></h3>
+                                                <div
+                                                    class="text-[10px] text-neutral-500 flex items-center gap-1.5 mt-0.5"
+                                                >
+                                                    <span>Runtime:</span>
+                                                    <span
+                                                        class="text-neutral-700 dark:text-neutral-300 font-mono uppercase"
+                                                        x-text="srv.runtime"
+                                                    ></span>
+                                                    <span>•</span>
+                                                    <span
+                                                        class="truncate max-w-[150px]"
+                                                        x-text="srv.repo_url"
+                                                    ></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <span
+                                            class="text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1"
+                                            :class="srv.is_running ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'border-neutral-500/40 bg-neutral-500/15 text-neutral-500'"
+                                        >
+                                            <span
+                                                class="w-1.5 h-1.5 rounded-full"
+                                                :class="srv.is_running ? 'bg-emerald-500' : 'bg-neutral-500'"
+                                            ></span>
+                                            <span
+                                                x-text="srv.is_running ? 'RUNNING' : 'STOPPED'"
+                                            ></span>
+                                        </span>
+                                    </div>
+
+                                    <!-- Tools List -->
+                                    <div
+                                        class="bg-offwhite-100 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-850 rounded-btn p-2.5 space-y-1.5"
+                                    >
+                                        <div
+                                            class="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1"
+                                        >
+                                            <i data-lucide="wrench" class="w-3 h-3"></i>
+                                            <span
+                                                >Bridged Tools (<span
+                                                    x-text="(srv.live_tools || JSON.parse(srv.tools_json || '[]')).length"
+                                                ></span
+                                                >)</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto"
+                                        >
+                                            <template
+                                                x-for="t in (srv.live_tools || JSON.parse(srv.tools_json || '[]'))"
+                                                :key="t.name"
+                                            >
+                                                <span
+                                                    class="text-[11px] font-mono bg-offwhite-50 dark:bg-matte-900 text-neutral-800 dark:text-neutral-200 border border-offwhite-300 dark:border-matte-800 rounded px-2 py-0.5"
+                                                    x-text="t.name"
+                                                    :title="t.description"
+                                                ></span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Toolbar -->
+                                    <div
+                                        class="flex items-center justify-between text-xs pt-1 border-t border-offwhite-200 dark:border-matte-850"
+                                    >
+                                        <button
+                                            @click="toggleMcp(srv.id, !srv.is_running)"
+                                            class="btn-interactive h-7 px-2.5 rounded-btn border text-[11px] flex items-center gap-1"
+                                            :class="srv.is_running ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'"
+                                        >
+                                            <i data-lucide="power" class="w-3 h-3"></i>
+                                            <span x-text="srv.is_running ? 'Stop' : 'Start'"></span>
+                                        </button>
+
+                                        <div class="flex items-center gap-1.5">
+                                            <button
+                                                @click="uninstallMcp(srv.id)"
+                                                class="btn-interactive h-7 px-2.5 rounded-btn border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] flex items-center gap-1"
+                                            >
+                                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                                <span>Uninstall</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW 2: SECURITY & BANNED IPS ================= -->
+                <div
+                    x-show="currentView === 'security'"
+                    x-cloak
+                    class="space-y-4 max-w-6xl mx-auto w-full"
+                >
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2
+                                class="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2"
+                            >
+                                <i data-lucide="shield-alert" class="w-5 h-5 text-rose-500"></i>
+                                Security Shield & Banned IPs
+                            </h2>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                รายชื่อ IP แปลกปลอมและ Bot Scanners
+                                ที่ถูกบล็อกอัตโนมัติจากการพยายามเจาะระบบหรือสแกนไฟล์ลับ
+                            </p>
+                        </div>
+                        <button
+                            @click="clearAllBans()"
+                            class="btn-interactive px-3 py-1.5 rounded-btn border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 text-xs flex items-center gap-1.5"
+                        >
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Clear All Bans</span>
+                        </button>
+                    </div>
+
+                    <!-- Manual Ban Input Card -->
+                    <div
+                        class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 flex gap-2 items-center shadow-sm"
+                    >
+                        <div class="relative flex-1">
+                            <span
+                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"
+                            >
+                                <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+                            </span>
+                            <input
+                                type="text"
+                                x-model="manualBanIp"
+                                @keydown.enter="banIp()"
+                                placeholder="ระบุ IP เพื่อแบนด้วยตัวเอง (เช่น 185.220.101.5)..."
+                                class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 hover:border-neutral-400 dark:hover:border-matte-600 focus:border-rose-500 rounded-input pl-9 pr-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 transition focus:outline-none"
+                            />
+                        </div>
+                        <button
+                            @click="banIp()"
+                            class="btn-interactive px-4 py-1.5 rounded-btn border border-rose-500/50 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-xs font-medium flex items-center gap-1.5"
+                        >
+                            <i data-lucide="shield-x" class="w-4 h-4"></i>
+                            <span>Ban IP</span>
+                        </button>
+                    </div>
+
+                    <!-- Banned IPs Table -->
+                    <div
+                        class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card overflow-hidden shadow"
+                    >
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead
+                                class="bg-offwhite-100 dark:bg-matte-950 border-b border-offwhite-200 dark:border-matte-800 text-[10px] uppercase text-neutral-500 dark:text-neutral-400"
+                            >
+                                <tr>
+                                    <th class="px-4 py-3">IP Address</th>
+                                    <th class="px-4 py-3">สาเหตุที่บล็อก / Target Path</th>
+                                    <th class="px-4 py-3 text-center">Hits</th>
+                                    <th class="px-4 py-3">เวลาที่แบน / เวลาที่เหลือ</th>
+                                    <th class="px-4 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-offwhite-200 dark:divide-matte-800">
+                                <template x-for="b in bannedIps" :key="b.ip">
+                                    <tr
+                                        class="hover:bg-offwhite-100/60 dark:hover:bg-matte-850/60 transition"
+                                    >
+                                        <td
+                                            class="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2"
+                                        >
+                                            <i
+                                                data-lucide="laptop"
+                                                class="w-3.5 h-3.5 text-neutral-400"
+                                            ></i>
+                                            <span x-text="b.ip"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-rose-600 dark:text-rose-400">
+                                            <span
+                                                class="border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded text-[10px] font-bold mr-1.5 uppercase"
+                                                x-text="b.reason || 'SCANNER'"
+                                            ></span>
+                                            <code
+                                                class="text-neutral-700 dark:text-neutral-300"
+                                                x-text="b.target_path"
+                                            ></code>
+                                        </td>
+                                        <td
+                                            class="px-4 py-3 text-center text-neutral-800 dark:text-neutral-200 font-bold"
+                                            x-text="b.hit_count"
+                                        ></td>
+                                        <td
+                                            class="px-4 py-3 text-neutral-500 text-[11px]"
+                                            x-text="b.banned_at + ' (' + Math.round((b.remaining_seconds || 0)/60) + ' min left)'"
+                                        ></td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button
+                                                @click="unbanIp(b.ip)"
+                                                class="btn-interactive px-3 py-1 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 dark:bg-matte-850 hover:bg-emerald-600 hover:border-emerald-500 text-neutral-700 dark:text-neutral-300 hover:text-white text-[11px] flex items-center gap-1 ml-auto"
+                                            >
+                                                <i data-lucide="check" class="w-3 h-3"></i>
+                                                <span>Unban</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="bannedIps.length === 0">
+                                    <td
+                                        colspan="5"
+                                        class="px-4 py-8 text-center text-neutral-400 dark:text-neutral-500 font-sans"
+                                    >
+                                        ไม่พบรายการ IP ที่ถูกแบนอยู่ในขณะนี้ (ระบบปลอดภัย)
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW 3: MCP SERVER MODE ================= -->
+                <div
+                    x-show="currentView === 'server'"
+                    x-cloak
+                    class="space-y-4 max-w-6xl mx-auto w-full"
+                >
+                    <!-- AI Request Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <!-- Gemini Card -->
+                        <div
+                            class="bg-offwhite-50 dark:bg-matte-900 border border-sky-500/30 rounded-card p-3.5 shadow-sm space-y-2"
+                        >
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2.5">
+                                    <div
+                                        class="w-8 h-8 rounded-btn border border-sky-500/30 bg-sky-500/10 flex items-center justify-center text-sky-500"
+                                    >
+                                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <div
+                                            class="text-xs font-bold text-sky-600 dark:text-sky-400 font-mono uppercase"
+                                        >
+                                            Google Gemini
+                                        </div>
+                                        <div class="text-[10px] text-neutral-500">
+                                            Custom MCP Client
+                                        </div>
+                                    </div>
+                                </div>
+                                <span
+                                    class="text-xl font-bold font-mono text-sky-600 dark:text-sky-400"
+                                    x-text="aiUsage.Gemini || 0"
+                                ></span>
+                            </div>
+                            <!-- Session TTL Progress -->
+                            <div
+                                class="pt-1.5 border-t border-offwhite-200 dark:border-matte-850 text-[10px] font-mono flex items-center justify-between"
+                            >
+                                <span class="text-neutral-500 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3 h-3 text-sky-500"></i>
+                                    Session TTL:
+                                </span>
+                                <span
+                                    :class="formatTtlClass(clientConnections.summary?.Gemini)"
+                                    x-text="formatRemainingTtl(clientConnections.summary?.Gemini)"
+                                ></span>
+                            </div>
+                        </div>
+
+                        <!-- Claude Card -->
+                        <div
+                            class="bg-offwhite-50 dark:bg-matte-900 border border-amber-500/30 rounded-card p-3.5 shadow-sm space-y-2"
+                        >
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2.5">
+                                    <div
+                                        class="w-8 h-8 rounded-btn border border-amber-500/30 bg-amber-500/10 flex items-center justify-center text-amber-500"
+                                    >
+                                        <i data-lucide="bot" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <div
+                                            class="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono uppercase"
+                                        >
+                                            Claude AI
+                                        </div>
+                                        <div class="text-[10px] text-neutral-500">
+                                            Remote Connector
+                                        </div>
+                                    </div>
+                                </div>
+                                <span
+                                    class="text-xl font-bold font-mono text-amber-600 dark:text-amber-400"
+                                    x-text="aiUsage.Claude || 0"
+                                ></span>
+                            </div>
+                            <!-- Session TTL Progress -->
+                            <div
+                                class="pt-1.5 border-t border-offwhite-200 dark:border-matte-850 text-[10px] font-mono flex items-center justify-between"
+                            >
+                                <span class="text-neutral-500 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3 h-3 text-amber-500"></i>
+                                    Session TTL:
+                                </span>
+                                <span
+                                    :class="formatTtlClass(clientConnections.summary?.Claude)"
+                                    x-text="formatRemainingTtl(clientConnections.summary?.Claude)"
+                                ></span>
+                            </div>
+                        </div>
+
+                        <!-- ChatGPT Card -->
+                        <div
+                            class="bg-offwhite-50 dark:bg-matte-900 border border-emerald-500/30 rounded-card p-3.5 shadow-sm space-y-2"
+                        >
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2.5">
+                                    <div
+                                        class="w-8 h-8 rounded-btn border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-500"
+                                    >
+                                        <i data-lucide="message-square" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <div
+                                            class="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono uppercase"
+                                        >
+                                            ChatGPT
+                                        </div>
+                                        <div class="text-[10px] text-neutral-500">
+                                            OpenAI Actions
+                                        </div>
+                                    </div>
+                                </div>
+                                <span
+                                    class="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400"
+                                    x-text="aiUsage.ChatGPT || 0"
+                                ></span>
+                            </div>
+                            <!-- Session TTL Progress -->
+                            <div
+                                class="pt-1.5 border-t border-offwhite-200 dark:border-matte-850 text-[10px] font-mono flex items-center justify-between"
+                            >
+                                <span class="text-neutral-500 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3 h-3 text-emerald-500"></i>
+                                    Session TTL:
+                                </span>
+                                <span
+                                    :class="formatTtlClass(clientConnections.summary?.ChatGPT)"
+                                    x-text="formatRemainingTtl(clientConnections.summary?.ChatGPT)"
+                                ></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Approvals Queue -->
+                    <section
+                        x-show="config.pending_approvals.length > 0"
+                        x-cloak
+                        class="bg-amber-500/10 border border-amber-500/40 rounded-card p-3.5 space-y-2"
+                    >
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></span>
+                                <h2
+                                    class="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400"
+                                >
+                                    Pending Approvals Queue
+                                </h2>
+                            </div>
+                            <span
+                                class="text-[11px] font-mono bg-amber-500 text-matte-950 px-2 py-0.5 rounded font-semibold"
+                                x-text="config.pending_approvals.length + ' pending'"
+                            ></span>
+                        </div>
+
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                            <template x-for="task in config.pending_approvals" :key="task.id">
+                                <div
+                                    class="bg-offwhite-50 dark:bg-matte-900 border border-amber-500/30 rounded p-3 flex justify-between items-center"
+                                >
+                                    <div>
+                                        <span
+                                            class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                            x-text="task.tool"
+                                        ></span>
+                                        <div
+                                            class="text-xs font-mono text-neutral-600 dark:text-neutral-300 mt-1 truncate max-w-lg"
+                                            x-text="task.details"
+                                        ></div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button
+                                            @click="resolveTask(task.id, true)"
+                                            class="btn-interactive bg-neutral-900 dark:bg-neutral-100 text-offwhite-50 dark:text-matte-950 text-xs px-3 py-1 rounded-btn font-medium"
+                                        >
+                                            Approve
+                                        </button>
+                                        <button
+                                            @click="resolveTask(task.id, false)"
+                                            class="btn-interactive border border-rose-500/40 text-rose-600 text-xs px-3 py-1 rounded-btn font-medium"
+                                        >
+                                            Deny
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+
+                    <!-- Activity Log & Dev Inspector Tabs -->
+                    <section
+                        class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card overflow-hidden shadow-md"
+                    >
+                        <div
+                            class="px-4 py-2 border-b border-offwhite-200 dark:border-matte-800 flex justify-between items-center bg-offwhite-100/70 dark:bg-matte-950/70"
+                        >
+                            <div class="flex gap-1">
+                                <button
+                                    @click="serverTab = 'logs'"
+                                    :class="serverTab === 'logs' ? 'bg-neutral-800 text-offwhite-50 dark:bg-neutral-200 dark:text-matte-950 shadow-sm' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
+                                    class="btn-interactive px-3 py-1 text-xs font-semibold rounded-btn flex items-center gap-1.5"
+                                >
+                                    <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i>
+                                    <span>Activity Log</span>
+                                    <span
+                                        class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-neutral-700 text-white dark:bg-neutral-300 dark:text-matte-900"
+                                        x-text="logs.length"
+                                    ></span>
+                                </button>
+                                <button
+                                    @click="serverTab = 'dev'; fetchDevTraffic(); refreshIcons()"
+                                    :class="serverTab === 'dev' ? 'bg-neutral-800 text-offwhite-50 dark:bg-neutral-200 dark:text-matte-950 shadow-sm' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
+                                    class="btn-interactive px-3 py-1 text-xs font-semibold rounded-btn flex items-center gap-1.5"
+                                >
+                                    <i data-lucide="binary" class="w-3.5 h-3.5"></i>
+                                    <span>Developer Inspector</span>
+                                    <span
+                                        class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-neutral-700 text-white dark:bg-neutral-300 dark:text-matte-900"
+                                        x-text="devTraffic.length"
+                                    ></span>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button
+                                    @click="clearLogs()"
+                                    title="Clear activity logs"
+                                    class="btn-interactive text-[11px] text-rose-600 dark:text-rose-400 border border-rose-500/30 px-2 py-1 rounded-btn flex items-center gap-1"
+                                >
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                    <span>Clear Logs</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Activity Log Content -->
+                        <div
+                            x-show="serverTab === 'logs'"
+                            class="p-3 font-mono text-xs max-h-96 overflow-y-auto space-y-2"
+                        >
+                            <template x-for="log in logs" :key="log.id">
+                                <div
+                                    class="border border-offwhite-200 dark:border-matte-800 bg-offwhite-100/50 dark:bg-matte-950/60 rounded p-2.5"
+                                >
+                                    <div class="flex justify-between items-center text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                                :class="log.status === 'SUCCESS' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'"
+                                                x-text="log.status"
+                                            ></span>
+                                            <span
+                                                class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-neutral-500/30"
+                                                x-text="log.client_name"
+                                            ></span>
+                                            <span
+                                                class="font-bold text-neutral-800 dark:text-neutral-200"
+                                                x-text="log.tool_name"
+                                            ></span>
+                                            <span
+                                                class="text-neutral-500 text-[11px] truncate max-w-xs"
+                                                x-text="log.params"
+                                            ></span>
+                                        </div>
+                                        <span
+                                            class="text-[11px] text-neutral-400"
+                                            x-text="log.timestamp"
+                                        ></span>
+                                    </div>
+                                    <pre
+                                        class="mt-1.5 text-[11px] text-neutral-600 dark:text-neutral-300 bg-offwhite-50 dark:bg-matte-900 p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap"
+                                        x-text="log.result"
+                                    ></pre>
+                                </div>
+                            </template>
+                            <div
+                                x-show="logs.length === 0"
+                                class="text-center py-8 text-neutral-400 text-xs font-sans"
+                            >
+                                No activity logs recorded yet.
+                            </div>
+                        </div>
+
+                        <!-- Developer Inspector Content -->
+                        <div
+                            x-show="serverTab === 'dev'"
+                            class="p-3 font-mono text-xs max-h-96 overflow-y-auto space-y-2"
+                        >
+                            <template x-for="item in devTraffic" :key="item.id">
+                                <div
+                                    class="border border-offwhite-200 dark:border-matte-800 bg-offwhite-100/50 dark:bg-matte-950/60 rounded p-2.5 flex justify-between items-center"
+                                >
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="font-bold text-sky-500"
+                                            x-text="item.client_name"
+                                        ></span>
+                                        <span class="text-neutral-400" x-text="item.method"></span>
+                                        <span
+                                            class="text-neutral-200 truncate max-w-sm"
+                                            x-text="item.path"
+                                        ></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="text-[10px] text-neutral-500"
+                                            x-text="item.latency_ms + 'ms'"
+                                        ></span>
+                                        <span
+                                            class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                            :class="item.status_code >= 400 ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/15 text-emerald-500'"
+                                            x-text="item.status_code"
+                                        ></span>
+                                    </div>
+                                </div>
+                            </template>
+                            <div
+                                x-show="devTraffic.length === 0"
+                                class="text-center py-8 text-neutral-400 text-xs font-sans"
+                            >
+                                Waiting for live AI traffic on /mcp...
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
         </div>
 
-        <!-- Sidebar Box 4: Security Shield Quick View -->
-        <div class="bg-rose-500/5 border border-rose-500/25 rounded-card p-3 space-y-1.5">
-          <div class="flex items-center justify-between text-xs font-bold text-rose-600 dark:text-rose-400">
-            <span class="flex items-center gap-1.5">
-              <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
-              Shield Protection
-            </span>
-            <span class="text-[10px] font-mono bg-rose-500/15 px-1.5 py-0.5 rounded border border-rose-500/30" x-text="bannedIps.length + ' Banned'"></span>
-          </div>
-          <p class="text-[11px] text-neutral-500 dark:text-neutral-400">Auto-ban malicious scanners and PHP/Env probes</p>
-          <button @click="switchView('security')"
-                  class="btn-interactive w-full text-center text-xs text-rose-600 dark:text-rose-300 hover:text-rose-800 dark:hover:text-white py-1 rounded-btn border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 flex items-center justify-center gap-1.5 mt-1">
-            <span>Open Banned List</span>
-            <i data-lucide="arrow-right" class="w-3 h-3"></i>
-          </button>
-        </div>
-
-      </div>
-    </aside>
-
-    <!-- ================= MAIN VIEWPORT CONTENT ================= -->
-    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto p-5">
-
-      <!-- ================= VIEW 1: MCP CLIENT HUB ================= -->
-      <div x-show="currentView === 'client'" x-cloak class="space-y-4 max-w-6xl mx-auto w-full">
-
-        <!-- Title Banner -->
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              <i data-lucide="cable" class="w-5 h-5 text-sky-500"></i>
-              External MCP Client Hub
-            </h2>
-            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              วาง GitHub URL ของ MCP Server จากภายนอก เพื่อดาวน์โหลด ติดตั้ง และเชื่อมต่อเครื่องมือเข้าสู่ Gateway อัตโนมัติ
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-mono px-2.5 py-1 rounded-btn border border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 flex items-center gap-1.5">
-              <i data-lucide="link" class="w-3.5 h-3.5"></i>
-              Aggregator Bridge Active
-            </span>
-          </div>
-        </div>
-
-        <!-- Quick GitHub Installer Card -->
-        <div class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card p-4 space-y-3 shadow-md">
-          <div class="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-            <i data-lucide="download-cloud" class="w-4 h-4 text-sky-500"></i>
-            ติดตั้ง MCP ใหม่จาก GitHub
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-            <div class="md:col-span-8">
-              <div class="relative">
-                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
-                  <i data-lucide="github" class="w-3.5 h-3.5"></i>
-                </span>
-                <input type="text" x-model="newMcpUrl"
-                       placeholder="https://github.com/modelcontextprotocol/servers/tree/main/src/fetch"
-                       class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 hover:border-neutral-400 dark:hover:border-matte-600 focus:border-sky-500 rounded-input pl-9 pr-3 py-2 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 transition focus:outline-none" />
-              </div>
-            </div>
-
-            <div class="md:col-span-4">
-              <div class="relative">
-                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
-                  <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
-                </span>
-                <input type="text" x-model="newMcpEnv"
-                       placeholder="Environment: API_KEY=xyz, PORT=8080"
-                       class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 hover:border-neutral-400 dark:hover:border-matte-600 focus:border-sky-500 rounded-input pl-9 pr-3 py-2 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 transition focus:outline-none" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Advanced Custom Command & Args (Optional Collapsible) -->
-          <div class="pt-1">
-            <button @click="showAdvancedMcp = !showAdvancedMcp" type="button"
-                    class="text-[11px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1">
-              <i data-lucide="chevron-right" class="w-3 h-3 transition-transform" :class="showAdvancedMcp ? 'rotate-90' : ''"></i>
-              <span>กำหนดคำสั่งรันเอง (Custom Command / Args - ไม่บังคับ)</span>
-            </button>
-            <div x-show="showAdvancedMcp" x-cloak class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-offwhite-200 dark:border-matte-850">
-              <div>
-                <label class="text-[10px] text-neutral-400 block mb-0.5">Command (เช่น uv, node, python):</label>
-                <input type="text" x-model="customMcpCommand" placeholder="เช่น uv หรือ node"
-                       class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 rounded-input px-2.5 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:outline-none" />
-              </div>
-              <div>
-                <label class="text-[10px] text-neutral-400 block mb-0.5">Arguments (เช่น run python src/server.py):</label>
-                <input type="text" x-model="customMcpArgs" placeholder="เช่น run python src/server.py"
-                       class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 rounded-input px-2.5 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:outline-none" />
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between pt-1">
-            <div class="text-[11px] text-neutral-500 flex items-center gap-1.5">
-              <i data-lucide="info" class="w-3.5 h-3.5"></i>
-              ระบบตรวจจับ Python (uv) / Node.js (npm) และเชื่อมต่อ Stdio ให้อัตโนมัติ
-            </div>
-
-            <button @click="installMcp()" :disabled="installingMcp"
-                    class="btn-interactive px-4 py-2 rounded-btn border border-sky-500/50 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm disabled:opacity-50">
-              <i data-lucide="plus-circle" class="w-4 h-4"></i>
-              <span x-text="installingMcp ? 'Installing...' : 'Install & Connect'"></span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Installed External MCP List -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            <span>Installed External MCP Servers (<span x-text="externalServers.length"></span>)</span>
-            <button @click="fetchExternalServers(); refreshIcons()" class="btn-interactive text-[11px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1">
-              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-              <span>Refresh Status</span>
-            </button>
-          </div>
-
-          <template x-if="externalServers.length === 0">
-            <div class="p-8 text-center text-neutral-400 dark:text-neutral-500 border border-dashed border-offwhite-300 dark:border-matte-800 rounded-card bg-offwhite-100/40 dark:bg-matte-900/40">
-              <i data-lucide="cable" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-              <div class="text-xs font-semibold text-neutral-600 dark:text-neutral-300">ยังไม่มี External MCP Server ติดตั้งอยู่</div>
-              <div class="text-[11px] mt-1">วาง GitHub URL ด้านบนเพื่อเริ่มติดตั้ง MCP Server ตัวแรกของคุณ</div>
-            </div>
-          </template>
-
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-            <template x-for="srv in externalServers" :key="srv.id">
-              <div class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 hover:border-offwhite-300 dark:hover:border-matte-700 transition rounded-card p-4 space-y-3 shadow-sm">
-                <div class="flex items-start justify-between">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-btn border border-sky-500/30 bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                      <i data-lucide="globe" class="w-4 h-4"></i>
+        <!-- Startup Workspace Selection Modal -->
+        <div
+            x-show="showWorkspaceModal"
+            x-cloak
+            class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+            <div
+                class="w-full max-w-lg rounded-card border border-offwhite-300 dark:border-matte-700 bg-offwhite-50 dark:bg-matte-900 shadow-2xl p-5 space-y-4"
+            >
+                <div class="flex items-start gap-3">
+                    <div
+                        class="w-10 h-10 shrink-0 rounded-btn border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-500"
+                    >
+                        <i data-lucide="folder-open" class="w-5 h-5"></i>
                     </div>
                     <div>
-                      <h3 class="text-xs font-bold text-neutral-900 dark:text-neutral-100 font-mono" x-text="srv.name"></h3>
-                      <div class="text-[10px] text-neutral-500 flex items-center gap-1.5 mt-0.5">
-                        <span>Runtime:</span>
-                        <span class="text-neutral-700 dark:text-neutral-300 font-mono uppercase" x-text="srv.runtime"></span>
-                        <span>•</span>
-                        <span class="truncate max-w-[150px]" x-text="srv.repo_url"></span>
-                      </div>
+                        <h2 class="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                            เลือกโฟลเดอร์ Workspace ก่อนเริ่มใช้งาน (Select Workspace)
+                        </h2>
+                        <p
+                            class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed"
+                        >
+                            AI จะอ่าน เขียน แก้ไขไฟล์
+                            และรันคำสั่งได้เฉพาะภายในโฟลเดอร์ที่คุณเลือกนี้เท่านั้น (Sandboxed Root)
+                        </p>
                     </div>
-                  </div>
-
-                  <span class="text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1"
-                        :class="srv.is_running ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'border-neutral-500/40 bg-neutral-500/15 text-neutral-500'">
-                    <span class="w-1.5 h-1.5 rounded-full" :class="srv.is_running ? 'bg-emerald-500' : 'bg-neutral-500'"></span>
-                    <span x-text="srv.is_running ? 'RUNNING' : 'STOPPED'"></span>
-                  </span>
                 </div>
 
-                <!-- Tools List -->
-                <div class="bg-offwhite-100 dark:bg-matte-950 border border-offwhite-200 dark:border-matte-850 rounded-btn p-2.5 space-y-1.5">
-                  <div class="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-                    <i data-lucide="wrench" class="w-3 h-3"></i>
-                    <span>Bridged Tools (<span x-text="(srv.live_tools || JSON.parse(srv.tools_json || '[]')).length"></span>)</span>
-                  </div>
-                  <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                    <template x-for="t in (srv.live_tools || JSON.parse(srv.tools_json || '[]'))" :key="t.name">
-                      <span class="text-[11px] font-mono bg-offwhite-50 dark:bg-matte-900 text-neutral-800 dark:text-neutral-200 border border-offwhite-300 dark:border-matte-800 rounded px-2 py-0.5"
-                            x-text="t.name" :title="t.description"></span>
-                    </template>
-                  </div>
+                <div class="space-y-2">
+                    <label
+                        class="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
+                    >
+                        Active Workspace Path
+                    </label>
+                    <div class="flex gap-2">
+                        <input
+                            type="text"
+                            x-model="workspaceInput"
+                            @keydown.enter="saveWorkspace()"
+                            placeholder="เช่น C:\Projects\my-app"
+                            class="flex-1 bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 rounded-input px-3 py-2 text-xs font-mono text-neutral-800 dark:text-neutral-200 focus:border-emerald-500 focus:outline-none"
+                        />
+                        <button
+                            @click="browseFolder()"
+                            :disabled="browsing"
+                            class="btn-interactive shrink-0 px-3 py-2 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 hover:bg-offwhite-200 dark:bg-matte-850 dark:hover:bg-matte-800 text-xs font-medium text-neutral-700 dark:text-neutral-200 flex items-center gap-1.5"
+                        >
+                            <i data-lucide="folder-search" class="w-3.5 h-3.5"></i>
+                            <span x-text="browsing ? 'Opening...' : 'Browse'"></span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Action Toolbar -->
-                <div class="flex items-center justify-between text-xs pt-1 border-t border-offwhite-200 dark:border-matte-850">
-                  <button @click="toggleMcp(srv.id, !srv.is_running)"
-                          class="btn-interactive h-7 px-2.5 rounded-btn border text-[11px] flex items-center gap-1"
-                          :class="srv.is_running ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'">
-                    <i data-lucide="power" class="w-3 h-3"></i>
-                    <span x-text="srv.is_running ? 'Stop' : 'Start'"></span>
-                  </button>
-
-                  <div class="flex items-center gap-1.5">
-                    <button @click="uninstallMcp(srv.id)"
-                            class="btn-interactive h-7 px-2.5 rounded-btn border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] flex items-center gap-1">
-                      <i data-lucide="trash-2" class="w-3 h-3"></i>
-                      <span>Uninstall</span>
+                <div
+                    class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-offwhite-200 dark:border-matte-800"
+                >
+                    <button
+                        @click="confirmDefaultWorkspace()"
+                        class="btn-interactive px-3 py-2 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 hover:bg-offwhite-200 dark:bg-matte-850 dark:hover:bg-matte-800 text-xs text-neutral-600 dark:text-neutral-300"
+                    >
+                        ใช้ค่าเริ่มต้น (./workspace)
                     </button>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ================= VIEW 2: SECURITY & BANNED IPS ================= -->
-      <div x-show="currentView === 'security'" x-cloak class="space-y-4 max-w-6xl mx-auto w-full">
-
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              <i data-lucide="shield-alert" class="w-5 h-5 text-rose-500"></i>
-              Security Shield & Banned IPs
-            </h2>
-            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              รายชื่อ IP แปลกปลอมและ Bot Scanners ที่ถูกบล็อกอัตโนมัติจากการพยายามเจาะระบบหรือสแกนไฟล์ลับ
-            </p>
-          </div>
-          <button @click="clearAllBans()"
-                  class="btn-interactive px-3 py-1.5 rounded-btn border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 text-xs flex items-center gap-1.5">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            <span>Clear All Bans</span>
-          </button>
-        </div>
-
-        <!-- Manual Ban Input Card -->
-        <div class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card p-3 flex gap-2 items-center shadow-sm">
-          <div class="relative flex-1">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
-              <i data-lucide="ban" class="w-3.5 h-3.5"></i>
-            </span>
-            <input type="text" x-model="manualBanIp" @keydown.enter="banIp()"
-                   placeholder="ระบุ IP เพื่อแบนด้วยตัวเอง (เช่น 185.220.101.5)..."
-                   class="w-full bg-offwhite-100 dark:bg-matte-950 border border-offwhite-300 dark:border-matte-700 hover:border-neutral-400 dark:hover:border-matte-600 focus:border-rose-500 rounded-input pl-9 pr-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500 transition focus:outline-none" />
-          </div>
-          <button @click="banIp()"
-                  class="btn-interactive px-4 py-1.5 rounded-btn border border-rose-500/50 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-xs font-medium flex items-center gap-1.5">
-            <i data-lucide="shield-x" class="w-4 h-4"></i>
-            <span>Ban IP</span>
-          </button>
-        </div>
-
-        <!-- Banned IPs Table -->
-        <div class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card overflow-hidden shadow">
-          <table class="w-full text-left text-xs font-mono">
-            <thead class="bg-offwhite-100 dark:bg-matte-950 border-b border-offwhite-200 dark:border-matte-800 text-[10px] uppercase text-neutral-500 dark:text-neutral-400">
-              <tr>
-                <th class="px-4 py-3">IP Address</th>
-                <th class="px-4 py-3">สาเหตุที่บล็อก / Target Path</th>
-                <th class="px-4 py-3 text-center">Hits</th>
-                <th class="px-4 py-3">เวลาที่แบน / เวลาที่เหลือ</th>
-                <th class="px-4 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-offwhite-200 dark:divide-matte-800">
-              <template x-for="b in bannedIps" :key="b.ip">
-                <tr class="hover:bg-offwhite-100/60 dark:hover:bg-matte-850/60 transition">
-                  <td class="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                    <i data-lucide="laptop" class="w-3.5 h-3.5 text-neutral-400"></i>
-                    <span x-text="b.ip"></span>
-                  </td>
-                  <td class="px-4 py-3 text-rose-600 dark:text-rose-400">
-                    <span class="border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded text-[10px] font-bold mr-1.5 uppercase" x-text="b.reason || 'SCANNER'"></span>
-                    <code class="text-neutral-700 dark:text-neutral-300" x-text="b.target_path"></code>
-                  </td>
-                  <td class="px-4 py-3 text-center text-neutral-800 dark:text-neutral-200 font-bold" x-text="b.hit_count"></td>
-                  <td class="px-4 py-3 text-neutral-500 text-[11px]" x-text="b.banned_at + ' (' + Math.round((b.remaining_seconds || 0)/60) + ' min left)'"></td>
-                  <td class="px-4 py-3 text-right">
-                    <button @click="unbanIp(b.ip)"
-                            class="btn-interactive px-3 py-1 rounded-btn border border-offwhite-300 dark:border-matte-700 bg-offwhite-100 dark:bg-matte-850 hover:bg-emerald-600 hover:border-emerald-500 text-neutral-700 dark:text-neutral-300 hover:text-white text-[11px] flex items-center gap-1 ml-auto">
-                      <i data-lucide="check" class="w-3 h-3"></i>
-                      <span>Unban</span>
+                    <button
+                        @click="saveWorkspace()"
+                        class="btn-interactive px-4 py-2 rounded-btn border border-emerald-500/50 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                    >
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        <span>ยืนยัน Workspace นี้</span>
                     </button>
-                  </td>
-                </tr>
-              </template>
-              <tr x-show="bannedIps.length === 0">
-                <td colspan="5" class="px-4 py-8 text-center text-neutral-400 dark:text-neutral-500 font-sans">
-                  ไม่พบรายการ IP ที่ถูกแบนอยู่ในขณะนี้ (ระบบปลอดภัย)
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+            </div>
         </div>
 
-      </div>
-
-      <!-- ================= VIEW 3: MCP SERVER MODE ================= -->
-      <div x-show="currentView === 'server'" x-cloak class="space-y-4 max-w-6xl mx-auto w-full">
-
-        <!-- AI Request Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <!-- Gemini Card -->
-          <div class="bg-offwhite-50 dark:bg-matte-900 border border-sky-500/30 rounded-card p-3.5 shadow-sm space-y-2">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-btn border border-sky-500/30 bg-sky-500/10 flex items-center justify-center text-sky-500">
-                  <i data-lucide="sparkles" class="w-4 h-4"></i>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-sky-600 dark:text-sky-400 font-mono uppercase">Google Gemini</div>
-                  <div class="text-[10px] text-neutral-500">Custom MCP Client</div>
-                </div>
-              </div>
-              <span class="text-xl font-bold font-mono text-sky-600 dark:text-sky-400" x-text="aiUsage.Gemini || 0"></span>
-            </div>
-            <!-- Session TTL Progress -->
-            <div class="pt-1.5 border-t border-offwhite-200 dark:border-matte-850 text-[10px] font-mono flex items-center justify-between">
-              <span class="text-neutral-500 flex items-center gap-1">
-                <i data-lucide="clock" class="w-3 h-3 text-sky-500"></i>
-                Session TTL:
-              </span>
-              <span :class="formatTtlClass(clientConnections.summary?.Gemini)"
-                    x-text="formatRemainingTtl(clientConnections.summary?.Gemini)"></span>
-            </div>
-          </div>
-
-          <!-- Claude Card -->
-          <div class="bg-offwhite-50 dark:bg-matte-900 border border-amber-500/30 rounded-card p-3.5 shadow-sm space-y-2">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-btn border border-amber-500/30 bg-amber-500/10 flex items-center justify-center text-amber-500">
-                  <i data-lucide="bot" class="w-4 h-4"></i>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono uppercase">Claude AI</div>
-                  <div class="text-[10px] text-neutral-500">Remote Connector</div>
-                </div>
-              </div>
-              <span class="text-xl font-bold font-mono text-amber-600 dark:text-amber-400" x-text="aiUsage.Claude || 0"></span>
-            </div>
-            <!-- Session TTL Progress -->
-            <div class="pt-1.5 border-t border-offwhite-200 dark:border-matte-850 text-[10px] font-mono flex items-center justify-between">
-              <span class="text-neutral-500 flex items-center gap-1">
-                <i data-lucide="clock" class="w-3 h-3 text-amber-500"></i>
-                Session TTL:
-              </span>
-              <span :class="formatTtlClass(clientConnections.summary?.Claude)"
-                    x-text="formatRemainingTtl(clientConnections.summary?.Claude)"></span>
-            </div>
-          </div>
-
-          <!-- ChatGPT Card -->
-          <div class="bg-offwhite-50 dark:bg-matte-900 border border-emerald-500/30 rounded-card p-3.5 shadow-sm space-y-2">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-btn border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                  <i data-lucide="message-square" class="w-4 h-4"></i>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono uppercase">ChatGPT</div>
-                  <div class="text-[10px] text-neutral-500">OpenAI Actions</div>
-                </div>
-              </div>
-              <span class="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400" x-text="aiUsage.ChatGPT || 0"></span>
-            </div>
-            <!-- Session TTL Progress -->
-            <div class="pt-1.5 border-t border-offwhite-200 dark:border-matte-850 text-[10px] font-mono flex items-center justify-between">
-              <span class="text-neutral-500 flex items-center gap-1">
-                <i data-lucide="clock" class="w-3 h-3 text-emerald-500"></i>
-                Session TTL:
-              </span>
-              <span :class="formatTtlClass(clientConnections.summary?.ChatGPT)"
-                    x-text="formatRemainingTtl(clientConnections.summary?.ChatGPT)"></span>
-            </div>
-          </div>
+        <!-- Minimal Toast Notification -->
+        <div
+            x-show="toastMessage"
+            x-transition.opacity
+            x-cloak
+            class="fixed bottom-5 right-5 bg-neutral-900 text-offwhite-50 dark:bg-offwhite-100 dark:text-matte-950 text-xs font-medium px-4 py-2.5 rounded shadow-lg border border-neutral-700 dark:border-offwhite-300 z-50"
+        >
+            <span x-text="toastMessage"></span>
         </div>
 
-        <!-- Pending Approvals Queue -->
-        <section x-show="config.pending_approvals.length > 0" x-cloak
-                 class="bg-amber-500/10 border border-amber-500/40 rounded-card p-3.5 space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full bg-amber-500 animate-ping"></span>
-              <h2 class="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">Pending Approvals Queue</h2>
-            </div>
-            <span class="text-[11px] font-mono bg-amber-500 text-matte-950 px-2 py-0.5 rounded font-semibold" x-text="config.pending_approvals.length + ' pending'"></span>
-          </div>
+        <script>
+            function agentDashboard() {
+                return {
+                    theme: localStorage.getItem("mcp_theme") || "dark",
+                    sidebarOpen: true,
+                    currentView: "server", // 'server' | 'client' | 'security'
+                    serverTab: "logs", // 'logs' | 'dev'
+                    wsConnected: false,
+                    showSecret: false,
+                    showEndpoint: false,
+                    toastMessage: "",
+                    browsing: false,
+                    showWorkspaceModal: false,
+                    workspaceInput: "",
+                    aiUsage: { Gemini: 0, Claude: 0, ChatGPT: 0, Total: 0 },
+                    clientConnections: { clients: [], summary: {}, max_ttl_seconds: 604800 },
+                    logs: [],
+                    devTraffic: [],
+                    externalServers: [],
+                    bannedIps: [],
+                    newMcpUrl: "",
+                    newMcpEnv: "",
+                    showAdvancedMcp: false,
+                    customMcpCommand: "",
+                    customMcpArgs: "",
+                    manualBanIp: "",
+                    installingMcp: false,
 
-          <div class="space-y-2 max-h-48 overflow-y-auto">
-            <template x-for="task in config.pending_approvals" :key="task.id">
-              <div class="bg-offwhite-50 dark:bg-matte-900 border border-amber-500/30 rounded p-3 flex justify-between items-center">
-                <div>
-                  <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300" x-text="task.tool"></span>
-                  <div class="text-xs font-mono text-neutral-600 dark:text-neutral-300 mt-1 truncate max-w-lg" x-text="task.details"></div>
-                </div>
-                <div class="flex gap-2">
-                  <button @click="resolveTask(task.id, true)" class="btn-interactive bg-neutral-900 dark:bg-neutral-100 text-offwhite-50 dark:text-matte-950 text-xs px-3 py-1 rounded-btn font-medium">Approve</button>
-                  <button @click="resolveTask(task.id, false)" class="btn-interactive border border-rose-500/40 text-rose-600 text-xs px-3 py-1 rounded-btn font-medium">Deny</button>
-                </div>
-              </div>
-            </template>
-          </div>
-        </section>
+                    config: {
+                        workspace_dir: "",
+                        workspace_configured: true,
+                        public_url: "",
+                        mcp_url: "",
+                        client_id: "",
+                        client_secret: "",
+                        permissions: {
+                            allow_read: true,
+                            allow_write: true,
+                            allow_bash: true,
+                            allow_vision: true,
+                            require_approval: false,
+                        },
+                        pending_approvals: [],
+                    },
 
-        <!-- Activity Log & Dev Inspector Tabs -->
-        <section class="bg-offwhite-50 dark:bg-matte-900 border border-offwhite-200 dark:border-matte-800 rounded-card overflow-hidden shadow-md">
-          <div class="px-4 py-2 border-b border-offwhite-200 dark:border-matte-800 flex justify-between items-center bg-offwhite-100/70 dark:bg-matte-950/70">
-            <div class="flex gap-1">
-              <button @click="serverTab = 'logs'"
-                      :class="serverTab === 'logs' ? 'bg-neutral-800 text-offwhite-50 dark:bg-neutral-200 dark:text-matte-950 shadow-sm' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
-                      class="btn-interactive px-3 py-1 text-xs font-semibold rounded-btn flex items-center gap-1.5">
-                <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i>
-                <span>Activity Log</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-neutral-700 text-white dark:bg-neutral-300 dark:text-matte-900" x-text="logs.length"></span>
-              </button>
-              <button @click="serverTab = 'dev'; fetchDevTraffic(); refreshIcons()"
-                      :class="serverTab === 'dev' ? 'bg-neutral-800 text-offwhite-50 dark:bg-neutral-200 dark:text-matte-950 shadow-sm' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
-                      class="btn-interactive px-3 py-1 text-xs font-semibold rounded-btn flex items-center gap-1.5">
-                <i data-lucide="binary" class="w-3.5 h-3.5"></i>
-                <span>Developer Inspector</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-neutral-700 text-white dark:bg-neutral-300 dark:text-matte-900" x-text="devTraffic.length"></span>
-              </button>
-            </div>
+                    permissionItems: [
+                        { key: "allow_read", label: "Read Files" },
+                        { key: "allow_write", label: "Write & Patch" },
+                        { key: "allow_bash", label: "Terminal Commands" },
+                        { key: "allow_vision", label: "Vision & Screenshots" },
+                        { key: "require_approval", label: "HITL Manual Approval" },
+                    ],
 
-            <div class="flex items-center gap-2">
-              <button @click="clearLogs()" title="Clear activity logs" class="btn-interactive text-[11px] text-rose-600 dark:text-rose-400 border border-rose-500/30 px-2 py-1 rounded-btn flex items-center gap-1">
-                <i data-lucide="trash-2" class="w-3 h-3"></i>
-                <span>Clear Logs</span>
-              </button>
-            </div>
-          </div>
+                    async init() {
+                        await this.fetchInitialState();
+                        await this.fetchExternalServers();
+                        await this.fetchBannedIps();
+                        this.connectWebSocket();
+                        this.refreshIcons();
 
-          <!-- Activity Log Content -->
-          <div x-show="serverTab === 'logs'" class="p-3 font-mono text-xs max-h-96 overflow-y-auto space-y-2">
-            <template x-for="log in logs" :key="log.id">
-              <div class="border border-offwhite-200 dark:border-matte-800 bg-offwhite-100/50 dark:bg-matte-950/60 rounded p-2.5">
-                <div class="flex justify-between items-center text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                          :class="log.status === 'SUCCESS' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'"
-                          x-text="log.status"></span>
-                    <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-neutral-500/30" x-text="log.client_name"></span>
-                    <span class="font-bold text-neutral-800 dark:text-neutral-200" x-text="log.tool_name"></span>
-                    <span class="text-neutral-500 text-[11px] truncate max-w-xs" x-text="log.params"></span>
-                  </div>
-                  <span class="text-[11px] text-neutral-400" x-text="log.timestamp"></span>
-                </div>
-                <pre class="mt-1.5 text-[11px] text-neutral-600 dark:text-neutral-300 bg-offwhite-50 dark:bg-matte-900 p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap" x-text="log.result"></pre>
-              </div>
-            </template>
-            <div x-show="logs.length === 0" class="text-center py-8 text-neutral-400 text-xs font-sans">
-              No activity logs recorded yet.
-            </div>
-          </div>
+                        setInterval(() => {
+                            this.syncStateSilent();
+                        }, 2500);
+                    },
 
-          <!-- Developer Inspector Content -->
-          <div x-show="serverTab === 'dev'" class="p-3 font-mono text-xs max-h-96 overflow-y-auto space-y-2">
-            <template x-for="item in devTraffic" :key="item.id">
-              <div class="border border-offwhite-200 dark:border-matte-800 bg-offwhite-100/50 dark:bg-matte-950/60 rounded p-2.5 flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-sky-500" x-text="item.client_name"></span>
-                  <span class="text-neutral-400" x-text="item.method"></span>
-                  <span class="text-neutral-200 truncate max-w-sm" x-text="item.path"></span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] text-neutral-500" x-text="item.latency_ms + 'ms'"></span>
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                        :class="item.status_code >= 400 ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/15 text-emerald-500'"
-                        x-text="item.status_code"></span>
-                </div>
-              </div>
-            </template>
-            <div x-show="devTraffic.length === 0" class="text-center py-8 text-neutral-400 text-xs font-sans">
-              Waiting for live AI traffic on /mcp...
-            </div>
-          </div>
-        </section>
+                    refreshIcons() {
+                        this.$nextTick(() => {
+                            if (window.lucide) {
+                                lucide.createIcons();
+                            }
+                        });
+                    },
 
-      </div>
+                    switchView(view) {
+                        this.currentView = view;
+                        this.refreshIcons();
+                        if (view === "client") this.fetchExternalServers();
+                        if (view === "security") this.fetchBannedIps();
+                    },
 
-    </main>
+                    toggleTheme() {
+                        this.theme = this.theme === "dark" ? "light" : "dark";
+                        localStorage.setItem("mcp_theme", this.theme);
+                    },
 
-  </div>
+                    activePermissionsCount() {
+                        return Object.values(this.config.permissions).filter(Boolean).length;
+                    },
 
-  <!-- Minimal Toast Notification -->
-  <div x-show="toastMessage" x-transition.opacity x-cloak
-       class="fixed bottom-5 right-5 bg-neutral-900 text-offwhite-50 dark:bg-offwhite-100 dark:text-matte-950 text-xs font-medium px-4 py-2.5 rounded shadow-lg border border-neutral-700 dark:border-offwhite-300 z-50">
-    <span x-text="toastMessage"></span>
-  </div>
+                    maskEndpoint(url) {
+                        if (!url) return "••••••••••••••••••••••••";
+                        try {
+                            const u = new URL(url);
+                            return `${u.protocol}//••••••••••••••••${u.pathname}`;
+                        } catch (e) {
+                            return "••••••••••••••••••••••••";
+                        }
+                    },
 
-  <script>
-    function agentDashboard() {
-      return {
-        theme: localStorage.getItem('mcp_theme') || 'dark',
-        sidebarOpen: true,
-        currentView: 'server', // 'server' | 'client' | 'security'
-        serverTab: 'logs', // 'logs' | 'dev'
-        wsConnected: false,
-        showSecret: false,
-        showEndpoint: false,
-        toastMessage: '',
-        browsing: false,
-        workspaceInput: '',
-        aiUsage: { Gemini: 0, Claude: 0, ChatGPT: 0, Total: 0 },
-        clientConnections: { clients: [], summary: {}, max_ttl_seconds: 604800 },
-        logs: [],
-        devTraffic: [],
-        externalServers: [],
-        bannedIps: [],
-        newMcpUrl: '',
-        newMcpEnv: '',
-        showAdvancedMcp: false,
-        customMcpCommand: '',
-        customMcpArgs: '',
-        manualBanIp: '',
-        installingMcp: false,
+                    copyText(text, label) {
+                        navigator.clipboard.writeText(text);
+                        this.showToast(`Copied ${label}`);
+                    },
 
-        config: {
-          workspace_dir: '',
-          public_url: '',
-          mcp_url: '',
-          client_id: '',
-          client_secret: '',
-          permissions: {
-            allow_read: true,
-            allow_write: true,
-            allow_bash: true,
-            allow_vision: true,
-            require_approval: false
-          },
-          pending_approvals: []
-        },
+                    showToast(msg) {
+                        this.toastMessage = msg;
+                        setTimeout(() => {
+                            this.toastMessage = "";
+                        }, 3000);
+                    },
 
-        permissionItems: [
-          { key: 'allow_read', label: 'Read Files' },
-          { key: 'allow_write', label: 'Write & Patch' },
-          { key: 'allow_bash', label: 'Terminal Commands' },
-          { key: 'allow_vision', label: 'Vision & Screenshots' },
-          { key: 'require_approval', label: 'HITL Manual Approval' }
-        ],
+                    formatRemainingTtl(clientData) {
+                        if (!clientData) return "ยังไม่เคยเชื่อมต่อ";
+                        const sec = clientData.remaining_seconds || 0;
+                        if (sec <= 0) return "หมดอายุแล้ว (Disconnected)";
+                        const days = Math.floor(sec / 86400);
+                        const hours = Math.floor((sec % 86400) / 3600);
+                        const mins = Math.floor((sec % 3600) / 60);
+                        if (days > 0) return `เหลือ ${days} วัน ${hours} ชม.`;
+                        if (hours > 0) return `เหลือ ${hours} ชม. ${mins} นาที`;
+                        return `เหลือ ${mins} นาที`;
+                    },
 
-        async init() {
-          await this.fetchInitialState();
-          await this.fetchExternalServers();
-          await this.fetchBannedIps();
-          this.connectWebSocket();
-          this.refreshIcons();
+                    formatTtlClass(clientData) {
+                        if (!clientData) return "text-neutral-400";
+                        const sec = clientData.remaining_seconds || 0;
+                        if (sec <= 0) return "text-rose-500 font-bold";
+                        if (sec < 86400) return "text-amber-500 font-bold";
+                        return "text-emerald-500 font-bold";
+                    },
 
-          setInterval(() => {
-            this.syncStateSilent();
-          }, 2500);
-        },
+                    async fetchInitialState() {
+                        try {
+                            const res = await fetch("/api/ui/state");
+                            const data = await res.json();
+                            this.config = data.state;
+                            this.workspaceInput = data.state.workspace_dir;
+                            this.showWorkspaceModal = !data.state.workspace_configured;
+                            this.logs = data.logs || [];
+                            if (data.ai_usage) this.aiUsage = data.ai_usage;
+                            if (data.client_connections)
+                                this.clientConnections = data.client_connections;
+                            this.refreshIcons();
+                        } catch (e) {}
+                    },
 
-        refreshIcons() {
-          this.$nextTick(() => {
-            if (window.lucide) {
-              lucide.createIcons();
+                    async fetchExternalServers() {
+                        try {
+                            const res = await fetch("/api/ui/mcp-clients");
+                            const data = await res.json();
+                            this.externalServers = data.servers || [];
+                            this.refreshIcons();
+                        } catch (e) {}
+                    },
+
+                    async fetchBannedIps() {
+                        try {
+                            const res = await fetch("/api/ui/security/bans");
+                            const data = await res.json();
+                            this.bannedIps = data.bans || [];
+                            this.refreshIcons();
+                        } catch (e) {}
+                    },
+
+                    async installMcp() {
+                        if (!this.newMcpUrl.trim()) {
+                            this.showToast("กรุณาระบุ GitHub URL");
+                            return;
+                        }
+                        this.installingMcp = true;
+                        this.showToast("กำลังดาวน์โหลดและติดตั้ง MCP Server...");
+                        try {
+                            let envObj = {};
+                            if (this.newMcpEnv.trim()) {
+                                this.newMcpEnv.split(",").forEach(part => {
+                                    const [k, v] = part.split("=");
+                                    if (k && v) envObj[k.trim()] = v.trim();
+                                });
+                            }
+                            const res = await fetch("/api/ui/mcp-clients/install", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    url: this.newMcpUrl.trim(),
+                                    env_vars: envObj,
+                                    command: this.customMcpCommand.trim(),
+                                    args: this.customMcpArgs.trim(),
+                                }),
+                            });
+                            const data = await res.json();
+                            if (data.status === "ok") {
+                                this.showToast("ติดตั้ง MCP สำเร็จเรียบร้อย");
+                                this.newMcpUrl = "";
+                                this.newMcpEnv = "";
+                                this.customMcpCommand = "";
+                                this.customMcpArgs = "";
+                                this.showAdvancedMcp = false;
+                                await this.fetchExternalServers();
+                            } else {
+                                this.showToast("Error: " + data.message);
+                            }
+                        } catch (e) {
+                            this.showToast("เกิดข้อผิดพลาดในการติดตั้ง");
+                        } finally {
+                            this.installingMcp = false;
+                        }
+                    },
+
+                    async toggleMcp(id, enable) {
+                        try {
+                            const res = await fetch("/api/ui/mcp-clients/toggle", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ id, enable }),
+                            });
+                            if (res.ok) {
+                                await this.fetchExternalServers();
+                                this.showToast(
+                                    enable ? "Start MCP Server แล้ว" : "Stop MCP Server แล้ว",
+                                );
+                            }
+                        } catch (e) {}
+                    },
+
+                    async uninstallMcp(id) {
+                        if (!confirm("ต้องการถอนการติดตั้ง MCP Server นี้ใช่หรือไม่?")) return;
+                        try {
+                            const res = await fetch(`/api/ui/mcp-clients/${id}`, {
+                                method: "DELETE",
+                            });
+                            if (res.ok) {
+                                this.showToast("ถอนการติดตั้ง MCP เรียบร้อย");
+                                await this.fetchExternalServers();
+                            }
+                        } catch (e) {}
+                    },
+
+                    async banIp() {
+                        if (!this.manualBanIp.trim()) return;
+                        try {
+                            const res = await fetch("/api/ui/security/ban", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ip: this.manualBanIp.trim() }),
+                            });
+                            if (res.ok) {
+                                this.manualBanIp = "";
+                                this.showToast("สั่งแบน IP เรียบร้อย");
+                                await this.fetchBannedIps();
+                            }
+                        } catch (e) {}
+                    },
+
+                    async unbanIp(ip) {
+                        try {
+                            const res = await fetch("/api/ui/security/unban", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ip }),
+                            });
+                            if (res.ok) {
+                                this.showToast("ปลดแบน IP เรียบร้อย");
+                                await this.fetchBannedIps();
+                            }
+                        } catch (e) {}
+                    },
+
+                    async clearAllBans() {
+                        if (!confirm("ต้องการปลดแบน IP ทั้งหมดใช่หรือไม่?")) return;
+                        try {
+                            const res = await fetch("/api/ui/security/bans/clear", {
+                                method: "POST",
+                            });
+                            if (res.ok) {
+                                this.showToast("ล้างรายการแบนเรียบร้อย");
+                                await this.fetchBannedIps();
+                            }
+                        } catch (e) {}
+                    },
+
+                    async togglePermission(key) {
+                        const newVal = !this.config.permissions[key];
+                        this.config.permissions[key] = newVal;
+                        await fetch("/api/ui/permissions", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ [key]: newVal }),
+                        });
+                    },
+
+                    async saveWorkspace() {
+                        const res = await fetch("/api/ui/workspace", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ path: this.workspaceInput }),
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.workspaceInput = data.workspace_dir || this.workspaceInput;
+                            this.config.workspace_configured = true;
+                            this.showWorkspaceModal = false;
+                            this.showToast("Workspace updated");
+                        }
+                    },
+
+                    async confirmDefaultWorkspace() {
+                        const res = await fetch("/api/ui/workspace", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ path: "" }),
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.workspaceInput = data.workspace_dir || this.workspaceInput;
+                            this.config.workspace_configured = true;
+                            this.showWorkspaceModal = false;
+                            this.showToast("Using default workspace");
+                        }
+                    },
+
+                    async browseFolder() {
+                        this.browsing = true;
+                        try {
+                            const res = await fetch("/api/ui/browse", { method: "POST" });
+                            const data = await res.json();
+                            if (data.path) {
+                                this.workspaceInput = data.path;
+                                this.config.workspace_configured = true;
+                                this.showWorkspaceModal = false;
+                                this.showToast("Workspace: " + data.path);
+                            }
+                        } finally {
+                            this.browsing = false;
+                        }
+                    },
+
+                    async clearLogs() {
+                        if (!confirm("ต้องการล้าง Activity Logs ทั้งหมดใช่หรือไม่?")) return;
+                        try {
+                            const res = await fetch("/api/ui/logs/clear", { method: "POST" });
+                            if (res.ok) {
+                                this.logs = [];
+                                this.showToast("ล้างประวัติคำสั่งเรียบร้อย");
+                            }
+                        } catch (e) {}
+                    },
+
+                    async resolveTask(taskId, approved) {
+                        await fetch("/api/ui/approve", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ task_id: taskId, approved }),
+                        });
+                    },
+
+                    async fetchDevTraffic() {
+                        try {
+                            const res = await fetch("/api/ui/dev/traffic");
+                            const data = await res.json();
+                            this.devTraffic = data.traffic || [];
+                        } catch (e) {}
+                    },
+
+                    async syncStateSilent() {
+                        try {
+                            const res = await fetch("/api/ui/state");
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.logs && Array.isArray(data.logs)) this.logs = data.logs;
+                                if (data.ai_usage) this.aiUsage = data.ai_usage;
+                                if (data.client_connections)
+                                    this.clientConnections = data.client_connections;
+                                if (data.state && data.state.pending_approvals)
+                                    this.config.pending_approvals = data.state.pending_approvals;
+                            }
+                        } catch (e) {}
+                    },
+
+                    connectWebSocket() {
+                        const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+                        const ws = new WebSocket(`${wsProto}//${location.host}/ws/ui`);
+                        ws.onopen = () => {
+                            this.wsConnected = true;
+                        };
+                        ws.onclose = () => {
+                            this.wsConnected = false;
+                            setTimeout(() => this.connectWebSocket(), 2000);
+                        };
+                        ws.onmessage = event => {
+                            const msg = JSON.parse(event.data);
+                            if (msg.type === "log") {
+                                const entry = msg.data.entry || msg.data;
+                                this.logs.unshift(entry);
+                                if (msg.data.ai_usage) this.aiUsage = msg.data.ai_usage;
+                            } else if (msg.type === "state_updated") {
+                                const existingSecret = this.config.client_secret;
+                                this.config = msg.data;
+                                if (!this.config.client_secret && existingSecret) {
+                                    this.config.client_secret = existingSecret;
+                                }
+                                this.workspaceInput = msg.data.workspace_dir;
+                                this.showWorkspaceModal = !msg.data.workspace_configured;
+                            } else if (
+                                msg.type === "ip_banned" ||
+                                msg.type === "ip_unbanned" ||
+                                msg.type === "bans_cleared"
+                            ) {
+                                this.fetchBannedIps();
+                            } else if (msg.type === "mcp_clients_updated") {
+                                this.fetchExternalServers();
+                            } else if (msg.type === "dev_traffic") {
+                                this.devTraffic.unshift(msg.data);
+                            }
+                        };
+                    },
+                };
             }
-          });
-        },
-
-        switchView(view) {
-          this.currentView = view;
-          this.refreshIcons();
-          if (view === 'client') this.fetchExternalServers();
-          if (view === 'security') this.fetchBannedIps();
-        },
-
-        toggleTheme() {
-          this.theme = this.theme === 'dark' ? 'light' : 'dark';
-          localStorage.setItem('mcp_theme', this.theme);
-        },
-
-        activePermissionsCount() {
-          return Object.values(this.config.permissions).filter(Boolean).length;
-        },
-
-        maskEndpoint(url) {
-          if (!url) return '••••••••••••••••••••••••';
-          try {
-            const u = new URL(url);
-            return `${u.protocol}//••••••••••••••••${u.pathname}`;
-          } catch (e) {
-            return '••••••••••••••••••••••••';
-          }
-        },
-
-        copyText(text, label) {
-          navigator.clipboard.writeText(text);
-          this.showToast(`Copied ${label}`);
-        },
-
-        showToast(msg) {
-          this.toastMessage = msg;
-          setTimeout(() => { this.toastMessage = ''; }, 3000);
-        },
-
-        formatRemainingTtl(clientData) {
-          if (!clientData) return 'ยังไม่เคยเชื่อมต่อ';
-          const sec = clientData.remaining_seconds || 0;
-          if (sec <= 0) return 'หมดอายุแล้ว (Disconnected)';
-          const days = Math.floor(sec / 86400);
-          const hours = Math.floor((sec % 86400) / 3600);
-          const mins = Math.floor((sec % 3600) / 60);
-          if (days > 0) return `เหลือ ${days} วัน ${hours} ชม.`;
-          if (hours > 0) return `เหลือ ${hours} ชม. ${mins} นาที`;
-          return `เหลือ ${mins} นาที`;
-        },
-
-        formatTtlClass(clientData) {
-          if (!clientData) return 'text-neutral-400';
-          const sec = clientData.remaining_seconds || 0;
-          if (sec <= 0) return 'text-rose-500 font-bold';
-          if (sec < 86400) return 'text-amber-500 font-bold';
-          return 'text-emerald-500 font-bold';
-        },
-
-        async fetchInitialState() {
-          try {
-            const res = await fetch('/api/ui/state');
-            const data = await res.json();
-            this.config = data.state;
-            this.workspaceInput = data.state.workspace_dir;
-            this.logs = data.logs || [];
-            if (data.ai_usage) this.aiUsage = data.ai_usage;
-            if (data.client_connections) this.clientConnections = data.client_connections;
-          } catch (e) {}
-        },
-
-        async fetchExternalServers() {
-          try {
-            const res = await fetch('/api/ui/mcp-clients');
-            const data = await res.json();
-            this.externalServers = data.servers || [];
-            this.refreshIcons();
-          } catch (e) {}
-        },
-
-        async fetchBannedIps() {
-          try {
-            const res = await fetch('/api/ui/security/bans');
-            const data = await res.json();
-            this.bannedIps = data.bans || [];
-            this.refreshIcons();
-          } catch (e) {}
-        },
-
-        async installMcp() {
-          if (!this.newMcpUrl.trim()) {
-            this.showToast('กรุณาระบุ GitHub URL');
-            return;
-          }
-          this.installingMcp = true;
-          this.showToast('กำลังดาวน์โหลดและติดตั้ง MCP Server...');
-          try {
-            let envObj = {};
-            if (this.newMcpEnv.trim()) {
-              this.newMcpEnv.split(',').forEach(part => {
-                const [k, v] = part.split('=');
-                if (k && v) envObj[k.trim()] = v.trim();
-              });
-            }
-            const res = await fetch('/api/ui/mcp-clients/install', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                url: this.newMcpUrl.trim(),
-                env_vars: envObj,
-                command: this.customMcpCommand.trim(),
-                args: this.customMcpArgs.trim()
-              })
-            });
-            const data = await res.json();
-            if (data.status === 'ok') {
-              this.showToast('ติดตั้ง MCP สำเร็จเรียบร้อย');
-              this.newMcpUrl = '';
-              this.newMcpEnv = '';
-              this.customMcpCommand = '';
-              this.customMcpArgs = '';
-              this.showAdvancedMcp = false;
-              await this.fetchExternalServers();
-            } else {
-              this.showToast('Error: ' + data.message);
-            }
-          } catch (e) {
-            this.showToast('เกิดข้อผิดพลาดในการติดตั้ง');
-          } finally {
-            this.installingMcp = false;
-          }
-        },
-
-        async toggleMcp(id, enable) {
-          try {
-            const res = await fetch('/api/ui/mcp-clients/toggle', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id, enable })
-            });
-            if (res.ok) {
-              await this.fetchExternalServers();
-              this.showToast(enable ? 'Start MCP Server แล้ว' : 'Stop MCP Server แล้ว');
-            }
-          } catch (e) {}
-        },
-
-        async uninstallMcp(id) {
-          if (!confirm('ต้องการถอนการติดตั้ง MCP Server นี้ใช่หรือไม่?')) return;
-          try {
-            const res = await fetch(`/api/ui/mcp-clients/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-              this.showToast('ถอนการติดตั้ง MCP เรียบร้อย');
-              await this.fetchExternalServers();
-            }
-          } catch (e) {}
-        },
-
-        async banIp() {
-          if (!this.manualBanIp.trim()) return;
-          try {
-            const res = await fetch('/api/ui/security/ban', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ip: this.manualBanIp.trim() })
-            });
-            if (res.ok) {
-              this.manualBanIp = '';
-              this.showToast('สั่งแบน IP เรียบร้อย');
-              await this.fetchBannedIps();
-            }
-          } catch (e) {}
-        },
-
-        async unbanIp(ip) {
-          try {
-            const res = await fetch('/api/ui/security/unban', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ip })
-            });
-            if (res.ok) {
-              this.showToast('ปลดแบน IP เรียบร้อย');
-              await this.fetchBannedIps();
-            }
-          } catch (e) {}
-        },
-
-        async clearAllBans() {
-          if (!confirm('ต้องการปลดแบน IP ทั้งหมดใช่หรือไม่?')) return;
-          try {
-            const res = await fetch('/api/ui/security/bans/clear', { method: 'POST' });
-            if (res.ok) {
-              this.showToast('ล้างรายการแบนเรียบร้อย');
-              await this.fetchBannedIps();
-            }
-          } catch (e) {}
-        },
-
-        async togglePermission(key) {
-          const newVal = !this.config.permissions[key];
-          this.config.permissions[key] = newVal;
-          await fetch('/api/ui/permissions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [key]: newVal })
-          });
-        },
-
-        async saveWorkspace() {
-          const res = await fetch('/api/ui/workspace', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: this.workspaceInput })
-          });
-          if (res.ok) this.showToast('Workspace updated');
-        },
-
-        async browseFolder() {
-          this.browsing = true;
-          try {
-            const res = await fetch('/api/ui/browse', { method: 'POST' });
-            const data = await res.json();
-            if (data.path) {
-              this.workspaceInput = data.path;
-              this.showToast('Workspace: ' + data.path);
-            }
-          } finally {
-            this.browsing = false;
-          }
-        },
-
-        async clearLogs() {
-          if (!confirm('ต้องการล้าง Activity Logs ทั้งหมดใช่หรือไม่?')) return;
-          try {
-            const res = await fetch('/api/ui/logs/clear', { method: 'POST' });
-            if (res.ok) {
-              this.logs = [];
-              this.showToast('ล้างประวัติคำสั่งเรียบร้อย');
-            }
-          } catch (e) {}
-        },
-
-        async resolveTask(taskId, approved) {
-          await fetch('/api/ui/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task_id: taskId, approved })
-          });
-        },
-
-        async fetchDevTraffic() {
-          try {
-            const res = await fetch('/api/ui/dev/traffic');
-            const data = await res.json();
-            this.devTraffic = data.traffic || [];
-          } catch (e) {}
-        },
-
-        async syncStateSilent() {
-          try {
-            const res = await fetch('/api/ui/state');
-            if (res.ok) {
-              const data = await res.json();
-              if (data.logs && Array.isArray(data.logs)) this.logs = data.logs;
-              if (data.ai_usage) this.aiUsage = data.ai_usage;
-              if (data.client_connections) this.clientConnections = data.client_connections;
-              if (data.state && data.state.pending_approvals) this.config.pending_approvals = data.state.pending_approvals;
-            }
-          } catch (e) {}
-        },
-
-        connectWebSocket() {
-          const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const ws = new WebSocket(`${wsProto}//${location.host}/ws/ui`);
-          ws.onopen = () => { this.wsConnected = true; };
-          ws.onclose = () => {
-            this.wsConnected = false;
-            setTimeout(() => this.connectWebSocket(), 2000);
-          };
-          ws.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'log') {
-              const entry = msg.data.entry || msg.data;
-              this.logs.unshift(entry);
-              if (msg.data.ai_usage) this.aiUsage = msg.data.ai_usage;
-            } else if (msg.type === 'state_updated') {
-              this.config = msg.data;
-              this.workspaceInput = msg.data.workspace_dir;
-            } else if (msg.type === 'ip_banned' || msg.type === 'ip_unbanned' || msg.type === 'bans_cleared') {
-              this.fetchBannedIps();
-            } else if (msg.type === 'mcp_clients_updated') {
-              this.fetchExternalServers();
-            } else if (msg.type === 'dev_traffic') {
-              this.devTraffic.unshift(msg.data);
-            }
-          };
-        }
-      }
-    }
-  </script>
-</body>
+        </script>
+    </body>
 </html>

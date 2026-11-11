@@ -5,6 +5,7 @@ import asyncio
 import os
 import sqlite3
 from typing import Any, Dict
+from urllib.parse import urlparse
 
 ## ---------- (02) THIRD-PARTY IMPORTS ---------------------------------------------- ##
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -30,7 +31,6 @@ from ai_mcp_gateway.utils.config import (
 )
 
 ## ---------- (04) CONSTANTS -------------------------------------------------------- ##
-LOCAL_WS_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 ui_router: APIRouter = APIRouter()
 
 ## ---------- (05) ENUMS ------------------------------------------------------------ ##
@@ -109,14 +109,19 @@ async def get_workspace_files() -> Dict[str, Any]:
 
 
 @ui_router.post("/api/ui/workspace")
-async def update_workspace(payload: Dict[str, Any]) -> Dict[str, str]:
-    """Update the active workspace directory path."""
+async def update_workspace(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Update or confirm the active workspace directory path."""
     new_path = str(payload.get("path", "")).strip()
     if new_path:
         state.set_workspace(new_path)
-        await state.broadcast("state_updated", state.to_dict(CLIENT_ID, CLIENT_SECRET))
-        print(f"[User Action] Workspace changed to: {state.workspace_dir}")
-    return {"workspace_dir": state.workspace_dir}
+    else:
+        state.workspace_configured = True
+    await state.broadcast("state_updated", state.to_dict(CLIENT_ID, ""))
+    print(f"[User Action] Workspace changed to: {state.workspace_dir}")
+    return {
+        "workspace_dir": state.workspace_dir,
+        "workspace_configured": state.workspace_configured,
+    }
 
 
 @ui_router.post("/api/ui/browse")
@@ -126,10 +131,10 @@ async def browse_folder_dialog() -> Dict[str, Any]:
     if selected_path:
         norm_path = os.path.normpath(selected_path)
         state.set_workspace(norm_path)
-        await state.broadcast("state_updated", state.to_dict(CLIENT_ID, CLIENT_SECRET))
+        await state.broadcast("state_updated", state.to_dict(CLIENT_ID, ""))
         print(f"[User Action] Workspace browsed and selected: {state.workspace_dir}")
-        return {"path": state.workspace_dir}
-    return {"path": None}
+        return {"path": state.workspace_dir, "workspace_configured": state.workspace_configured}
+    return {"path": None, "workspace_configured": state.workspace_configured}
 
 
 @ui_router.post("/api/ui/permissions")
@@ -143,7 +148,7 @@ async def update_permissions(payload: Dict[str, Any]) -> Dict[str, str]:
                 setattr(state, key, val)
                 changed.append(f"{key}={val}")
 
-    await state.broadcast("state_updated", state.to_dict(CLIENT_ID, CLIENT_SECRET))
+    await state.broadcast("state_updated", state.to_dict(CLIENT_ID, ""))
     if changed:
         print(f"[User Action] Permissions updated: {', '.join(changed)}")
     return {"status": "ok"}
@@ -263,10 +268,24 @@ async def approve_task_endpoint(payload: Dict[str, Any]) -> Dict[str, str]:
 @ui_router.websocket("/ws/ui")
 async def dashboard_websocket(websocket: WebSocket) -> None:
     """Serve live dashboard updates over localhost-only WebSockets."""
+    cfg = get_config()
+    allowed_hosts = set(cfg.security.allowed_local_hosts) | {"testserver"}
     client_host = websocket.client.host if websocket.client else ""
-    if client_host not in LOCAL_WS_HOSTS:
+    if client_host not in allowed_hosts:
         await websocket.close(code=1008)
         return
+
+    origin = websocket.headers.get("origin")
+    if origin:
+        try:
+            parsed_origin = urlparse(origin)
+            origin_host = (parsed_origin.hostname or "").lower()
+            if origin_host not in allowed_hosts:
+                await websocket.close(code=1008)
+                return
+        except ValueError:
+            await websocket.close(code=1008)
+            return
 
     await websocket.accept()
     state.ws_clients.append(websocket)

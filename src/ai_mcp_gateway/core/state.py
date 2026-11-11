@@ -30,6 +30,7 @@ class AppState:
     def __init__(self) -> None:
         self.workspace_dir: str = os.path.abspath(get_workspace_dir())
         os.makedirs(self.workspace_dir, exist_ok=True)
+        self.workspace_configured: bool = False
 
         cfg = get_config()
         self.public_url: str = f"http://localhost:{cfg.server.port}"
@@ -108,6 +109,29 @@ class AppState:
         except sqlite3.Error as err:
             LOGGER.debug("Failed to clear IP bans: %s", err)
 
+    def load_banned_ips_from_db(self) -> None:
+        """Load persistent banned IP records from SQLite into runtime memory on startup."""
+        try:
+            from ai_mcp_gateway.core.database import get_all_banned_ips
+
+            bans = get_all_banned_ips()
+            now = time.time()
+            for b in bans:
+                ip = b.get("ip")
+                expires_at = float(b.get("expires_at", 0))
+                if ip and expires_at > now:
+                    self.blocked_ips[ip] = expires_at
+                    self.banned_details[ip] = {
+                        "ip": ip,
+                        "reason": b.get("reason", "Malicious Scanner"),
+                        "target_path": b.get("target_path", ""),
+                        "banned_at": str(b.get("banned_at", "")),
+                        "expires_at": expires_at,
+                        "hit_count": int(b.get("hit_count", 1)),
+                    }
+        except (sqlite3.Error, OSError, ValueError) as err:
+            LOGGER.debug("Failed to load banned IPs from SQLite: %s", err)
+
     def get_banned_ips_list(self) -> List[Dict[str, Any]]:
         """Return active banned IP records sorted by most recent ban time."""
         now = time.time()
@@ -177,12 +201,14 @@ class AppState:
         if not os.path.exists(abs_path):
             os.makedirs(abs_path, exist_ok=True)
         self.workspace_dir = abs_path
+        self.workspace_configured = True
         return self.workspace_dir
 
     def to_dict(self, client_id: str, client_secret: str) -> Dict[str, Any]:
         """Serialize runtime state for the dashboard state endpoint."""
         return {
             "workspace_dir": self.workspace_dir,
+            "workspace_configured": self.workspace_configured,
             "public_url": self.public_url,
             "mcp_url": getattr(self, "mcp_url", f"{self.public_url}/mcp"),
             "client_id": client_id,
@@ -231,8 +257,9 @@ class AppState:
         self.pending_tasks[task_id] = {"future": future, "info": task_info}
         await self.broadcast("approval_requested", task_info)
 
+        timeout_seconds = getattr(get_config().session, "approval_timeout", 300.0)
         try:
-            return await asyncio.wait_for(future, timeout=300.0)
+            return await asyncio.wait_for(future, timeout=timeout_seconds)
         except asyncio.TimeoutError:
             return False
         finally:

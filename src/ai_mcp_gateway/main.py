@@ -121,7 +121,7 @@ def run_server() -> None:
     print(f"Active Workspace    : {state.workspace_dir}")
     print(f"MCP Server Endpoint : {state.mcp_url}")
     print(f"Client ID           : {CLIENT_ID}")
-    print(f"Client Secret       : {CLIENT_SECRET}")
+    print(f"Client Secret       : {_mask_secret(CLIENT_SECRET)} (view full secret in /ui)")
     print("=" * 65)
 
     webbrowser.open(dashboard_url)
@@ -129,6 +129,15 @@ def run_server() -> None:
 
 
 ## ---------- (08) PRIVATE FUNCTIONS ------------------------------------------------ ##
+def _mask_secret(secret: str) -> str:
+    """Mask sensitive secrets for terminal display, preserving only trailing characters."""
+    if not secret:
+        return "(not set)"
+    if len(secret) <= 4:
+        return "*" * len(secret)
+    return f"{'*' * min(12, len(secret) - 4)}{secret[-4:]}"
+
+
 def _configure_windows_console_utf8() -> None:
     """Force UTF-8 stdout/stderr encoding on Windows consoles when supported."""
     if sys.platform != "win32":

@@ -6,11 +6,30 @@ import os
 ## ---------- (02) THIRD-PARTY IMPORTS ---------------------------------------------- ##
 ## ---------- (03) LOCAL APPLICATION/LIBRARY-SPECIFIC IMPORTS ----------------------- ##
 from ai_mcp_gateway.core.state import state
+from ai_mcp_gateway.utils.config import (
+    get_client_secret_file,
+    get_config,
+    get_data_dir,
+    get_db_path,
+    get_runtime_dir,
+)
 
 ## ---------- (04) CONSTANTS -------------------------------------------------------- ##
 IGNORED_WORKSPACE_DIRS = frozenset(
-    {".git", ".venv", "__pycache__", "node_modules", ".idea", ".vscode"}
+    {
+        ".git",
+        ".venv",
+        "__pycache__",
+        "node_modules",
+        ".idea",
+        ".vscode",
+        "data",
+        "build",
+        "dist",
+        "out",
+    }
 )
+ALLOWED_ENV_FILENAMES = frozenset({".env.example", ".env.sample", ".env.template"})
 
 ## ---------- (05) ENUMS ------------------------------------------------------------ ##
 # No module-level enums required.
@@ -26,6 +45,8 @@ def safe_path(target_path: str) -> str:
     full_path = os.path.realpath(os.path.join(base, target_path))
     if os.path.commonpath([base, full_path]) != base:
         raise ValueError(f"Access denied: ไม่อนุญาตให้เข้าถึงไฟล์นอก Workspace ({target_path})")
+    if _is_protected_path(full_path):
+        raise ValueError(f"Access denied: ไม่อนุญาตให้เข้าถึงไฟล์ความลับของระบบ ({target_path})")
     return full_path
 
 
@@ -39,9 +60,17 @@ def list_files(subdir: str = "") -> str:
 
     entries = []
     for root, dirs, files in os.walk(target):
-        dirs[:] = [d for d in dirs if d not in IGNORED_WORKSPACE_DIRS]
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in IGNORED_WORKSPACE_DIRS
+            and not _is_protected_path(os.path.realpath(os.path.join(root, d)))
+        ]
         rel_root = os.path.relpath(root, state.workspace_dir)
         for filename in files:
+            abs_file = os.path.realpath(os.path.join(root, filename))
+            if _is_protected_path(abs_file):
+                continue
             rel_file = os.path.join(rel_root, filename) if rel_root != "." else filename
             entries.append(rel_file)
     return "\n".join(entries) if entries else "โฟลเดอร์ว่างเปล่า"
@@ -90,7 +119,31 @@ def patch_file(filepath: str, search_block: str, replace_block: str) -> str:
 
 
 ## ---------- (08) PRIVATE FUNCTIONS ------------------------------------------------ ##
-# No private helper functions required.
+def _is_protected_path(full_path: str) -> bool:
+    """Return True if path targets gateway secret storage, database, or .env files."""
+    resolved = os.path.realpath(full_path)
+    cfg = get_config()
+    runtime_dir = get_runtime_dir()
+    protected_roots = (
+        os.path.realpath(get_data_dir()),
+        os.path.realpath(get_db_path()),
+        os.path.realpath(get_client_secret_file()),
+        os.path.realpath(runtime_dir / cfg.storage.data_dir),
+        os.path.realpath(runtime_dir / cfg.storage.db_path),
+        os.path.realpath(runtime_dir / cfg.storage.client_secret_file),
+    )
+    for root in protected_roots:
+        try:
+            if os.path.commonpath([root, resolved]) == root:
+                return True
+        except ValueError:
+            continue
+
+    name = os.path.basename(resolved).lower()
+    if name == ".env" or (name.startswith(".env.") and name not in ALLOWED_ENV_FILENAMES):
+        return True
+    return False
+
 
 ## ---------- (09) MAIN EXECUTION --------------------------------------------------- ##
 # Filesystem tool module only.

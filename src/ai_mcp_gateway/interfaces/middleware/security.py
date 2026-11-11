@@ -130,8 +130,6 @@ def _verify_mcp_bearer_token(
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header.split(" ", 1)[1]
-    elif "token" in request.query_params:
-        token = request.query_params.get("token")
 
     if not token:
         pub_url = state.public_url.rstrip("/") if state.public_url else "http://localhost:3000"

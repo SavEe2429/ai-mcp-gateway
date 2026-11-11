@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 
 ## ---------- (02) THIRD-PARTY IMPORTS ---------------------------------------------- ##
 from fastapi import APIRouter, Depends, Form, Header, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 ## ---------- (03) LOCAL APPLICATION/LIBRARY-SPECIFIC IMPORTS ----------------------- ##
@@ -138,9 +138,7 @@ async def oauth_protected_resource(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/oauth/authorize")
-@router.post("/oauth/authorize")
 async def oauth_authorize(
-    request: Request,
     response_type: str = Query("code"),
     client_id: Optional[str] = Query(None),
     redirect_uri: Optional[str] = Query(None),
@@ -148,9 +146,8 @@ async def oauth_authorize(
     oauth_state: Optional[str] = Query(None, alias="state"),
     code_challenge: Optional[str] = Query(None),
     code_challenge_method: Optional[str] = Query(None),
-    auto_approve: Optional[str] = Query("1"),
 ) -> HTMLResponse:
-    """Validate redirect_uri, issue an authorization code, and render consent redirect."""
+    """Validate redirect_uri and render an explicit approval form requiring Client Secret."""
     if not redirect_uri:
         return HTMLResponse("<h3>OAuth Error: Missing redirect_uri</h3>", status_code=400)
 
@@ -159,23 +156,72 @@ async def oauth_authorize(
             "<h3>OAuth Error: Untrusted or invalid redirect_uri</h3>", status_code=400
         )
 
+    return HTMLResponse(
+        content=_render_consent_html(
+            client_id=client_id,
+            redirect_uri=redirect_uri,
+            scope=scope,
+            oauth_state=oauth_state,
+            code_challenge=code_challenge,
+            code_challenge_method=code_challenge_method,
+            response_type=response_type,
+        )
+    )
+
+
+@router.post("/oauth/authorize", response_model=None)
+async def oauth_authorize_submit(
+    response_type: str = Form("code"),
+    client_id: Optional[str] = Form(None),
+    redirect_uri: Optional[str] = Form(None),
+    scope: Optional[str] = Form("mcp"),
+    oauth_state: Optional[str] = Form(None, alias="state"),
+    code_challenge: Optional[str] = Form(None),
+    code_challenge_method: Optional[str] = Form(None),
+    client_secret: Optional[str] = Form(None),
+) -> HTMLResponse | RedirectResponse:
+    """Verify Client Secret on explicit consent submission before issuing authorization code."""
+    if not redirect_uri:
+        return HTMLResponse("<h3>OAuth Error: Missing redirect_uri</h3>", status_code=400)
+
+    if not is_allowed_redirect_uri(redirect_uri):
+        return HTMLResponse(
+            "<h3>OAuth Error: Untrusted or invalid redirect_uri</h3>", status_code=400
+        )
+
+    if not client_secret or not secrets.compare_digest(client_secret.strip(), CLIENT_SECRET):
+        return HTMLResponse(
+            content=_render_consent_html(
+                client_id=client_id,
+                redirect_uri=redirect_uri,
+                scope=scope,
+                oauth_state=oauth_state,
+                code_challenge=code_challenge,
+                code_challenge_method=code_challenge_method,
+                response_type=response_type,
+                error_message="Invalid Client Secret. Check your Local Web Dashboard (/ui).",
+            ),
+            status_code=403,
+        )
+
+    _prune_expired_auth_codes()
     client_name = _infer_client_name(redirect_uri, client_id)
     auth_code = secrets.token_urlsafe(32)
     AUTH_CODES[auth_code] = {
         "client_id": client_id,
         "client_name": client_name,
         "redirect_uri": redirect_uri,
-        "code_challenge": code_challenge,
+        "code_challenge": code_challenge or None,
         "code_challenge_method": code_challenge_method or ("S256" if code_challenge else "plain"),
         "expires_at": time.time() + get_config().session.auth_code_ttl,
     }
 
-    delimiter = "&" if "?" in redirect_uri else "?"
-    callback_url = f"{redirect_uri}{delimiter}code={auth_code}"
+    query_params: Dict[str, str] = {"code": auth_code}
     if oauth_state:
-        callback_url += f"&state={oauth_state}"
-
-    return HTMLResponse(content=_render_consent_html(callback_url, client_id, scope))
+        query_params["state"] = oauth_state
+    delimiter = "&" if "?" in redirect_uri else "?"
+    callback_url = f"{redirect_uri}{delimiter}{urllib.parse.urlencode(query_params)}"
+    return RedirectResponse(url=callback_url, status_code=303)
 
 
 @router.post("/oauth/token")
@@ -230,8 +276,45 @@ def _infer_client_name(redirect_uri: str, client_id: Optional[str]) -> str:
     return "Gemini"
 
 
-def _render_consent_html(callback_url: str, client_id: Optional[str], scope: Optional[str]) -> str:
-    """Render auto-redirecting OAuth authorization page."""
+def _prune_expired_auth_codes() -> None:
+    """Remove expired authorization codes from in-memory storage."""
+    now = time.time()
+    expired = [code for code, info in AUTH_CODES.items() if now > info["expires_at"]]
+    for code in expired:
+        AUTH_CODES.pop(code, None)
+
+
+def _render_consent_html(
+    *,
+    client_id: Optional[str],
+    redirect_uri: str,
+    scope: Optional[str],
+    oauth_state: Optional[str] = None,
+    code_challenge: Optional[str] = None,
+    code_challenge_method: Optional[str] = None,
+    response_type: str = "code",
+    error_message: Optional[str] = None,
+) -> str:
+    """Render manual OAuth consent form requiring Gateway Client Secret verification."""
+    error_banner = (
+        f'<div class="mb-4 rounded-xl border border-rose-500/40 bg-rose-950/60 px-3 py-2 text-xs text-rose-200">'
+        f"{html.escape(error_message)}</div>"
+        if error_message
+        else ""
+    )
+    hidden_fields = "\n      ".join(
+        f'<input type="hidden" name="{name}" value="{html.escape(val)}">'
+        for name, val in (
+            ("response_type", response_type),
+            ("client_id", client_id or ""),
+            ("redirect_uri", redirect_uri),
+            ("scope", scope or "mcp"),
+            ("state", oauth_state or ""),
+            ("code_challenge", code_challenge or ""),
+            ("code_challenge_method", code_challenge_method or ""),
+        )
+        if val
+    )
     return f"""<!DOCTYPE html>
 <html lang="th">
 <head>
@@ -239,14 +322,14 @@ def _render_consent_html(callback_url: str, client_id: Optional[str], scope: Opt
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authorize MCP Gateway</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <meta http-equiv="refresh" content="2;url={html.escape(callback_url)}">
 </head>
 <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4 font-sans">
   <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
     <h1 class="text-xl font-bold text-white mb-2">Authorize Local MCP Gateway</h1>
     <p class="text-xs text-slate-400 mb-6 leading-relaxed">
-      Connecting your AI client securely to the local MCP server...
+      Enter your Gateway Client Secret from the Local Dashboard (/ui) to approve this connection.
     </p>
+    {error_banner}
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-left text-xs mb-6 space-y-1.5 font-mono">
       <div class="flex justify-between text-slate-400">
         <span>Client ID:</span>
@@ -257,11 +340,21 @@ def _render_consent_html(callback_url: str, client_id: Optional[str], scope: Opt
         <span class="text-cyan-400">{html.escape(scope or "mcp")}</span>
       </div>
     </div>
-    <a href="{html.escape(callback_url)}"
-       class="block w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-emerald-600/30">
-      Continue (Authorize)
-    </a>
-    <p class="text-[11px] text-slate-500 mt-3">Redirecting automatically in 2 seconds...</p>
+    <form method="post" action="/oauth/authorize" class="space-y-4 text-left">
+      {hidden_fields}
+      <div>
+        <label for="client_secret" class="block text-xs font-medium text-slate-300 mb-1.5">
+          Gateway Client Secret
+        </label>
+        <input id="client_secret" name="client_secret" type="password" required autocomplete="off"
+               placeholder="Paste Client Secret from /ui"
+               class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none">
+      </div>
+      <button type="submit"
+              class="block w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-emerald-600/30">
+        Approve &amp; Authorize
+      </button>
+    </form>
   </div>
 </body>
 </html>
@@ -320,6 +413,12 @@ def _handle_authorization_code_grant(
 
     if csec and not secrets.compare_digest(csec, CLIENT_SECRET):
         raise HTTPException(status_code=401, detail="Invalid client credentials")
+
+    if not saved_challenge and not csec:
+        raise HTTPException(
+            status_code=401,
+            detail="Client authentication or PKCE verification is required",
+        )
 
     client_name = code_info.get("client_name", "Gemini")
     access_token = secrets.token_hex(32)

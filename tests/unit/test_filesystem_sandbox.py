@@ -58,6 +58,19 @@ class TestFilesystemSandbox(unittest.TestCase):
             finally:
                 state.set_workspace(old_ws)
 
+    def test_protected_gateway_data_and_env_files_blocked(self):
+        """Verify gateway data/ secrets, database, and .env files remain blocked even at repo root."""
+        old_ws = state.workspace_dir
+        try:
+            state.set_workspace(".")
+            for blocked in ("data/client_secret.key", "data/gateway.db", ".env", ".env.local"):
+                with self.assertRaises(ValueError):
+                    fs.safe_path(blocked)
+            # Example env template remains readable
+            self.assertTrue(fs.safe_path(".env.example").endswith(".env.example"))
+        finally:
+            state.set_workspace(old_ws)
+
 
 if __name__ == "__main__":
     unittest.main()

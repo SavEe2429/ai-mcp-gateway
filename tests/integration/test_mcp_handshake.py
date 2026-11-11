@@ -88,6 +88,13 @@ class TestMCPProtocol(BaseIntegrationTestCase):
         auth_res = self.client.delete("/mcp", headers={"Authorization": f"Bearer {test_token}"})
         self.assertEqual(auth_res.status_code, 200)
 
+    def test_mcp_rejects_query_param_bearer_token(self):
+        """Verify /mcp rejects ?token= query parameter fallback and requires Authorization header."""
+        test_token = secrets.token_hex(32)
+        save_token(test_token, client_name="Claude")
+        res = self.client.delete(f"/mcp?token={test_token}")
+        self.assertEqual(res.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()

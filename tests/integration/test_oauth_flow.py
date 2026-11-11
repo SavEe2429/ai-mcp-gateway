@@ -56,6 +56,18 @@ class TestOAuthEndpoints(BaseIntegrationTestCase):
         res_data = res_res.json()
         self.assertIn("resource", res_data)
 
+    def test_oauth_metadata_host_spoofing_rejected(self):
+        """Verify get_base_url rejects untrusted X-Forwarded-Host spoofing."""
+        res = self.client.get(
+            "/.well-known/oauth-authorization-server",
+            headers={"x-forwarded-host": "attacker.evil.com", "x-forwarded-proto": "https"},
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertNotIn("attacker.evil.com", data["issuer"])
+        self.assertNotIn("attacker.evil.com", data["authorization_endpoint"])
+        self.assertNotIn("attacker.evil.com", data["token_endpoint"])
+
     def test_oauth_authorize_get_requires_manual_consent_and_secret(self):
         """Verify GET /oauth/authorize does not auto-approve and POST rejects wrong secret."""
         res_get = self.client.get(
@@ -183,6 +195,62 @@ class TestOAuthEndpoints(BaseIntegrationTestCase):
 
         self.assertNotEqual(CLIENT_SECRET, "agent-secret-key-12345")
         self.assertGreaterEqual(len(CLIENT_SECRET), 16)
+
+    def test_oauth_refresh_token_distinct_and_rotates(self):
+        """Verify refresh_token is distinct from access_token, rotates, and validates client_secret."""
+        auth_code = self._authorize_and_get_code(
+            client_id="test-claude-client",
+            redirect_uri="https://claude.ai/api/mcp/oauth/callback",
+        )
+        token_res = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": auth_code,
+                "client_id": "test-claude-client",
+                "client_secret": CLIENT_SECRET,
+            },
+        )
+        self.assertEqual(token_res.status_code, 200)
+        data = token_res.json()
+        access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
+        self.assertNotEqual(access_token, refresh_token)
+
+        # Reject refresh when wrong secret supplied
+        bad_refresh_res = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_secret": "wrong-secret",
+            },
+        )
+        self.assertEqual(bad_refresh_res.status_code, 401)
+
+        # Successful refresh rotation
+        refresh_res = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_secret": CLIENT_SECRET,
+            },
+        )
+        self.assertEqual(refresh_res.status_code, 200)
+        new_data = refresh_res.json()
+        self.assertNotEqual(new_data["access_token"], access_token)
+        self.assertNotEqual(new_data["refresh_token"], refresh_token)
+
+        # Old refresh token is revoked
+        stale_refresh_res = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            },
+        )
+        self.assertEqual(stale_refresh_res.status_code, 401)
 
 
 if __name__ == "__main__":

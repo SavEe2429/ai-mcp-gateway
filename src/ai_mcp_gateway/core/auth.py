@@ -19,9 +19,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 ## ---------- (03) LOCAL APPLICATION/LIBRARY-SPECIFIC IMPORTS ----------------------- ##
 from ai_mcp_gateway.core.database import (
+    get_refresh_token_client,
     get_token_client,
+    revoke_refresh_token,
     revoke_token,
+    save_refresh_token,
     save_token,
+    verify_refresh_token,
     verify_token,
 )
 from ai_mcp_gateway.core.state import state
@@ -79,13 +83,21 @@ def is_allowed_redirect_uri(redirect_uri: str) -> bool:
 
 def get_base_url(request: Request) -> str:
     """Resolve authoritative external Base URL supporting direct, Funnel, and proxy calls."""
-    proto = request.headers.get("x-forwarded-proto")
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    if proto and host:
-        return f"{proto}://{host}".rstrip("/")
+    proto = request.headers.get("x-forwarded-proto") or "https"
+    fwd_host = request.headers.get("x-forwarded-host")
 
     if state.public_url and not any(loc in state.public_url for loc in ("localhost", "127.0.0.1")):
+        trusted_netloc = urllib.parse.urlparse(state.public_url).netloc.lower()
+        if fwd_host and fwd_host.lower() == trusted_netloc:
+            return f"{proto}://{fwd_host}".rstrip("/")
         return state.public_url.rstrip("/")
+
+    if fwd_host:
+        raw_host = fwd_host.split(":")[0].lower()
+        cfg = get_config()
+        trusted_local = set(cfg.security.allowed_local_hosts) | {"testserver"}
+        if raw_host in trusted_local:
+            return f"{proto}://{fwd_host}".rstrip("/")
 
     return str(request.base_url).rstrip("/")
 
@@ -244,7 +256,7 @@ async def oauth_token(
     if grant_type == "client_credentials":
         return _handle_client_credentials_grant(cid, csec)
     if grant_type == "refresh_token":
-        return _handle_refresh_token_grant(refresh_token)
+        return _handle_refresh_token_grant(refresh_token, cid, csec)
 
     raise HTTPException(status_code=400, detail=f"Unsupported grant_type: {grant_type}")
 
@@ -321,7 +333,7 @@ def _render_consent_html(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authorize MCP Gateway</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4 font-sans">
   <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
@@ -422,14 +434,16 @@ def _handle_authorization_code_grant(
 
     client_name = code_info.get("client_name", "Gemini")
     access_token = secrets.token_hex(32)
+    refresh_token = secrets.token_hex(32)
     save_token(access_token, client_name=client_name)
+    save_refresh_token(refresh_token, client_name=client_name)
     time_prefix = datetime.now().strftime("%H:%M:%S")
     print(f"[{time_prefix}] [AI Auth] [{client_name}] Access token issued via authorization_code")
     return {
         "access_token": access_token,
         "token_type": "Bearer",
         "expires_in": get_config().session.ttl,
-        "refresh_token": access_token,
+        "refresh_token": refresh_token,
         "scope": "mcp",
     }
 
@@ -438,8 +452,10 @@ def _handle_client_credentials_grant(cid: Optional[str], csec: Optional[str]) ->
     """Validate client_credentials grant and issue a Bearer access token."""
     if cid == CLIENT_ID and csec and secrets.compare_digest(csec, CLIENT_SECRET):
         token = secrets.token_hex(32)
+        refresh_token = secrets.token_hex(32)
         client_name = "Gemini"
         save_token(token, client_name=client_name)
+        save_refresh_token(refresh_token, client_name=client_name)
         time_prefix = datetime.now().strftime("%H:%M:%S")
         print(
             f"[{time_prefix}] [AI Auth] [{client_name}] Access token issued via client_credentials"
@@ -448,29 +464,48 @@ def _handle_client_credentials_grant(cid: Optional[str], csec: Optional[str]) ->
             "access_token": token,
             "token_type": "Bearer",
             "expires_in": get_config().session.ttl,
-            "refresh_token": token,
+            "refresh_token": refresh_token,
             "scope": "mcp",
         }
     raise HTTPException(status_code=401, detail="Invalid client credentials")
 
 
-def _handle_refresh_token_grant(refresh_token: Optional[str]) -> Dict[str, Any]:
-    """Rotate a valid refresh token and issue a fresh Bearer access token."""
-    if refresh_token and verify_token(refresh_token):
+def _handle_refresh_token_grant(
+    refresh_token: Optional[str],
+    cid: Optional[str] = None,
+    csec: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Rotate a valid refresh token and issue fresh Bearer access and refresh tokens."""
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="Missing refresh_token")
+
+    if csec and not secrets.compare_digest(csec, CLIENT_SECRET):
+        raise HTTPException(status_code=401, detail="Invalid client credentials")
+
+    # Verify against dedicated refresh token store with fallback to legacy token table
+    if verify_refresh_token(refresh_token):
+        client_name = get_refresh_token_client(refresh_token) or "Gemini"
+        revoke_refresh_token(refresh_token)
+    elif verify_token(refresh_token):
         client_name = get_token_client(refresh_token) or "Gemini"
         revoke_token(refresh_token)
-        new_token = secrets.token_hex(32)
-        save_token(new_token, client_name=client_name)
-        time_prefix = datetime.now().strftime("%H:%M:%S")
-        print(f"[{time_prefix}] [AI Auth] [{client_name}] Access token refreshed")
-        return {
-            "access_token": new_token,
-            "token_type": "Bearer",
-            "expires_in": get_config().session.ttl,
-            "refresh_token": new_token,
-            "scope": "mcp",
-        }
-    raise HTTPException(status_code=401, detail="Invalid refresh token")
+    else:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    new_access_token = secrets.token_hex(32)
+    new_refresh_token = secrets.token_hex(32)
+    save_token(new_access_token, client_name=client_name)
+    save_refresh_token(new_refresh_token, client_name=client_name)
+
+    time_prefix = datetime.now().strftime("%H:%M:%S")
+    print(f"[{time_prefix}] [AI Auth] [{client_name}] Access token refreshed")
+    return {
+        "access_token": new_access_token,
+        "token_type": "Bearer",
+        "expires_in": get_config().session.ttl,
+        "refresh_token": new_refresh_token,
+        "scope": "mcp",
+    }
 
 
 ## ---------- (09) MAIN EXECUTION --------------------------------------------------- ##

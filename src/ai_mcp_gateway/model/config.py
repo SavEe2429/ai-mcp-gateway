@@ -55,6 +55,21 @@ class SessionConfig(BaseModel):
         ge=1,
         description="Default limit for recent audit log queries",
     )
+    approval_timeout: float = Field(
+        default=300.0,
+        gt=0,
+        description="Human-in-the-loop manual approval timeout in seconds before auto-rejection",
+    )
+    max_background_tasks: int = Field(
+        default=50,
+        ge=1,
+        description="Max concurrent background tasks in memory buffer",
+    )
+    max_stream_bytes: int = Field(
+        default=2 * 1024 * 1024,
+        ge=1024,
+        description="Max terminal stdout/stderr stream buffer in bytes before truncation",
+    )
 
 
 class ServerConfig(BaseModel):

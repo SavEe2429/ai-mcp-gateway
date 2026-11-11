@@ -102,6 +102,28 @@ class TestTerminalAutoBackground(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("task_0", term.BACKGROUND_TASKS)
         self.assertIn("task_9", term.BACKGROUND_TASKS)
 
+    async def test_sensitive_env_vars_filtered_from_subprocess(self):
+        """Verify sensitive secrets and tokens are redacted from subprocess environment."""
+        import os
+
+        os.environ["MCP_CLIENT_SECRET"] = "super-secret-mcp-key"
+        os.environ["GATEWAY_SECRET_KEY"] = "super-secret-gateway-key"
+        os.environ["GITHUB_TOKEN"] = "ghp_secrettoken123"
+        try:
+            python_exe = sys.executable
+            code = (
+                "import os, json; "
+                "keys = [k for k in ('MCP_CLIENT_SECRET', 'GATEWAY_SECRET_KEY', 'GITHUB_TOKEN') if k in os.environ]; "
+                "print('LEAKED_KEYS:' + json.dumps(keys))"
+            )
+            cmd = f'"{python_exe}" -c "{code}"'
+            res = await term.execute_bash(cmd)
+            self.assertIn("LEAKED_KEYS:[]", res)
+        finally:
+            os.environ.pop("MCP_CLIENT_SECRET", None)
+            os.environ.pop("GATEWAY_SECRET_KEY", None)
+            os.environ.pop("GITHUB_TOKEN", None)
+
 
 if __name__ == "__main__":
     unittest.main()

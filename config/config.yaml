@@ -17,6 +17,12 @@ session:
   terminal_timeout: 60.0
   # Audit logs query default limit
   audit_log_limit: 50
+  # Human-in-the-loop manual approval timeout in seconds (300.0 = 5 minutes)
+  approval_timeout: 300.0
+  # Max concurrent terminal background tasks retained in memory
+  max_background_tasks: 50
+  # Max terminal stdout/stderr stream buffer in bytes before truncation (2MB)
+  max_stream_bytes: 2097152
 
 server:
   host: "0.0.0.0"
@@ -26,7 +32,9 @@ server:
   title: "Local AI Agent Gateway"
   mcp_server_name: "Local-Agent-Bridge"
   mcp_server_title: "Local Computer Agent Gateway"
-  mcp_server_description: "Bridge to access, create, edit files, execute terminal commands, and take desktop screenshots on the user's local PC."
+  mcp_server_description:
+    "Bridge to access, create, edit files, execute terminal commands, and take desktop screenshots
+    on the user's local PC."
   enable_tailscale_funnel: true
   allowed_cors_origins:
     - "http://localhost:3000"

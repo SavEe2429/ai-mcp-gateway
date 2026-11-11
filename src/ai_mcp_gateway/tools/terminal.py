@@ -5,7 +5,7 @@ import asyncio
 import os
 import time
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 ## ---------- (02) THIRD-PARTY IMPORTS ---------------------------------------------- ##
 ## ---------- (03) LOCAL APPLICATION/LIBRARY-SPECIFIC IMPORTS ----------------------- ##
@@ -16,6 +16,13 @@ from ai_mcp_gateway.utils.config import get_config
 BACKGROUND_TASKS: Dict[str, Dict[str, Any]] = {}
 MAX_BACKGROUND_TASKS: int = 50
 MAX_STREAM_BYTES: int = 2 * 1024 * 1024
+REDACTED_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        "MCP_CLIENT_SECRET",
+        "GATEWAY_SECRET_KEY",
+        "GITHUB_TOKEN",
+    }
+)
 
 ## ---------- (05) ENUMS ------------------------------------------------------------ ##
 # No module-level enums required.
@@ -39,8 +46,7 @@ async def execute_bash(command: str) -> str:
         return "Error: สิทธิ์การรันคำสั่ง Terminal ถูกปิดใช้งานอยู่"
 
     try:
-        env = os.environ.copy()
-        env["PYTHONIOENCODING"] = "utf-8"
+        env = _sanitize_subprocess_env()
 
         proc = await asyncio.create_subprocess_shell(
             command,
@@ -93,8 +99,13 @@ async def execute_bash(command: str) -> str:
                 "start_time": start_time,
             }
 
+            timeout_secs = int(wait_seconds)
+            timeout_desc = f"{timeout_secs} วินาที"
+            if timeout_secs >= 60 and timeout_secs % 60 == 0:
+                timeout_desc += f" ({timeout_secs // 60} นาที)"
+
             return (
-                f"[Auto-Background] คำสั่งทำงานเกิน {int(wait_seconds)} วินาที (1 นาที) "
+                f"[Auto-Background] คำสั่งทำงานเกิน {timeout_desc} "
                 f"ระบบได้สลับคำสั่งนี้ไปทำงานเบื้องหลังอัตโนมัติเรียบร้อยแล้ว\n"
                 f"- Task ID: {task_id}\n"
                 f"- PID: {proc.pid}\n"
@@ -160,8 +171,26 @@ def kill_task(task_id: str) -> str:
 
 
 ## ---------- (08) PRIVATE FUNCTIONS ------------------------------------------------ ##
-def _prune_background_tasks(max_tasks: int = MAX_BACKGROUND_TASKS) -> None:
+def _sanitize_subprocess_env() -> Dict[str, str]:
+    """Copy os.environ while stripping internal gateway secrets and tokens."""
+    env = os.environ.copy()
+    for key in list(env.keys()):
+        upper_key = key.upper()
+        if (
+            key in REDACTED_ENV_KEYS
+            or upper_key in REDACTED_ENV_KEYS
+            or upper_key.startswith("GATEWAY_")
+            or upper_key.startswith("MCP_CLIENT_")
+        ):
+            env.pop(key, None)
+    env["PYTHONIOENCODING"] = "utf-8"
+    return env
+
+
+def _prune_background_tasks(max_tasks: Optional[int] = None) -> None:
     """Prune oldest completed tasks to keep memory bounded."""
+    if max_tasks is None:
+        max_tasks = getattr(get_config().session, "max_background_tasks", MAX_BACKGROUND_TASKS)
     if len(BACKGROUND_TASKS) < max_tasks:
         return
 
@@ -176,6 +205,7 @@ def _prune_background_tasks(max_tasks: int = MAX_BACKGROUND_TASKS) -> None:
 
 async def _read_stream_into_chunks(stream: asyncio.StreamReader, chunks: List[bytes]) -> None:
     """Read a byte stream continuously in background until EOF, respecting maximum buffer bounds."""
+    max_bytes = getattr(get_config().session, "max_stream_bytes", MAX_STREAM_BYTES)
     total_bytes = 0
     truncated = False
 
@@ -184,11 +214,16 @@ async def _read_stream_into_chunks(stream: asyncio.StreamReader, chunks: List[by
         if not data:
             break
         total_bytes += len(data)
-        if total_bytes <= MAX_STREAM_BYTES:
+        if total_bytes <= max_bytes:
             chunks.append(data)
         elif not truncated:
             truncated = True
-            chunks.append(b"\n[...Output capped at 2MB limit to prevent memory exhaustion...]\n")
+            mb_label = (
+                f"{max_bytes // (1024 * 1024)}MB" if max_bytes >= 1024 * 1024 else f"{max_bytes}B"
+            )
+            chunks.append(
+                f"\n[...Output capped at {mb_label} limit to prevent memory exhaustion...]\n".encode()
+            )
 
 
 ## ---------- (09) MAIN EXECUTION --------------------------------------------------- ##

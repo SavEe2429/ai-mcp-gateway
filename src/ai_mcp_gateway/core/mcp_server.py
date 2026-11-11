@@ -1,6 +1,7 @@
 """Built-in MCP server instance, activity telemetry, and sandboxed tool bindings."""
 
 ## ---------- (01) STANDARD LIBRARY IMPORTS ----------------------------------------- ##
+import asyncio
 from datetime import datetime
 from typing import Optional
 
@@ -59,7 +60,8 @@ async def record_and_broadcast_log(
     timestamp_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
     time_prefix = now_dt.strftime("%H:%M:%S")
 
-    log_activity(
+    await asyncio.to_thread(
+        log_activity,
         tool_name,
         params,
         status,
@@ -67,7 +69,7 @@ async def record_and_broadcast_log(
         client_name=chosen_client,
         timestamp=timestamp_str,
     )
-    ai_stats = get_ai_usage_stats()
+    ai_stats = await asyncio.to_thread(get_ai_usage_stats)
     log_entry = {
         "id": int(now_dt.timestamp() * 1000),
         "tool_name": tool_name,
@@ -89,7 +91,7 @@ async def record_and_broadcast_log(
 async def list_workspace_files(subdir: str = "") -> str:
     """List all files and directories in the local workspace."""
     try:
-        res = fs.list_files(subdir)
+        res = await asyncio.to_thread(fs.list_files, subdir)
         await record_and_broadcast_log("list_files", subdir or ".", "SUCCESS", res[:300])
         return res
     except (OSError, ValueError, RuntimeError) as err:
@@ -101,7 +103,7 @@ async def list_workspace_files(subdir: str = "") -> str:
 async def read_workspace_file(filepath: str) -> str:
     """Read the full content of a file from the workspace."""
     try:
-        res = fs.read_file(filepath)
+        res = await asyncio.to_thread(fs.read_file, filepath)
         await record_and_broadcast_log("read_file", filepath, "SUCCESS", f"Read {len(res)} chars")
         return res
     except (OSError, ValueError, RuntimeError) as err:
@@ -121,7 +123,7 @@ async def write_workspace_file(filepath: str, content: str) -> str:
                 "write_file", filepath, "DENIED", "User rejected file write"
             )
             return "Error: Denied by user"
-        res = fs.write_file(filepath, content)
+        res = await asyncio.to_thread(fs.write_file, filepath, content)
         await record_and_broadcast_log("write_file", filepath, "SUCCESS", res)
         return res
     except (OSError, ValueError, RuntimeError) as err:
@@ -140,7 +142,7 @@ async def patch_workspace_file(filepath: str, search_block: str, replace_block: 
         if not approved:
             await record_and_broadcast_log("patch_file", filepath, "DENIED", "User rejected patch")
             return "Error: Denied by user"
-        res = fs.patch_file(filepath, search_block, replace_block)
+        res = await asyncio.to_thread(fs.patch_file, filepath, search_block, replace_block)
         await record_and_broadcast_log("patch_file", filepath, "SUCCESS", res)
         return res
     except (OSError, ValueError, RuntimeError) as err:
@@ -185,7 +187,7 @@ async def read_workspace_image(
 ) -> list[Image | str] | Image | str:
     """Load an image file from the workspace ('auto', 'image', or 'text' Base64 mode)."""
     try:
-        raw_bytes = vis.read_image_bytes(filepath)
+        raw_bytes = await asyncio.to_thread(vis.read_image_bytes, filepath)
         return await _format_image_response(
             tool_name="read_image",
             target_label=filepath,
@@ -202,7 +204,7 @@ async def read_workspace_image(
 async def list_active_windows() -> str:
     """List open desktop application windows with their titles, HWNDs, and process names."""
     try:
-        windows = vis.list_open_windows()
+        windows = await asyncio.to_thread(vis.list_open_windows)
         if not windows:
             return "No open desktop application windows found."
 
@@ -229,14 +231,14 @@ async def list_active_windows() -> str:
 async def switch_active_window(window_query: str) -> str:
     """Bring a specific application window to the foreground by HWND, title, or process."""
     try:
-        win = vis.find_window(window_query)
+        win = await asyncio.to_thread(vis.find_window, window_query)
         if not win:
             return (
                 f"Error: No window matching '{window_query}' "
                 "(call list_active_windows to inspect open windows)."
             )
 
-        ok = vis.switch_to_window(win["hwnd"])
+        ok = await asyncio.to_thread(vis.switch_to_window, win["hwnd"])
         status = "succeeded" if ok else "dispatched"
         msg = (
             f"Switched to window '{win['title']}' "
@@ -255,7 +257,9 @@ async def capture_window_screenshot(
 ) -> list[Image | str] | Image | str:
     """Capture a screenshot cropped strictly to a specific application window."""
     try:
-        raw_bytes, win_info = vis.capture_window_bytes(window_query, switch_focus=True)
+        raw_bytes, win_info = await asyncio.to_thread(
+            vis.capture_window_bytes, window_query, switch_focus=True
+        )
         summary = (
             f"Window '{win_info['title']}' "
             f"({win_info['rect']['width']}x{win_info['rect']['height']})"
@@ -281,7 +285,7 @@ async def take_desktop_screenshot(
         if window_query:
             return await capture_window_screenshot(window_query=window_query, mode=mode)
 
-        raw_bytes = vis.take_screenshot_bytes()
+        raw_bytes = await asyncio.to_thread(vis.take_screenshot_bytes)
         return await _format_image_response(
             tool_name="take_screenshot",
             target_label="Desktop",

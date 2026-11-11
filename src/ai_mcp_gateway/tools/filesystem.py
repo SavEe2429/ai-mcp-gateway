@@ -30,6 +30,7 @@ IGNORED_WORKSPACE_DIRS = frozenset(
     }
 )
 ALLOWED_ENV_FILENAMES = frozenset({".env.example", ".env.sample", ".env.template"})
+MAX_FILE_READ_BYTES: int = 10 * 1024 * 1024
 
 ## ---------- (05) ENUMS ------------------------------------------------------------ ##
 # No module-level enums required.
@@ -83,6 +84,15 @@ def read_file(filepath: str) -> str:
     path = safe_path(filepath)
     if not os.path.isfile(path):
         return f"Error: ไม่พบไฟล์ {filepath}"
+    try:
+        file_size = os.path.getsize(path)
+        if file_size > MAX_FILE_READ_BYTES:
+            return (
+                f"Error: ไฟล์ {filepath} มีขนาดใหญ่เกินกำหนด ({file_size} bytes > "
+                f"{MAX_FILE_READ_BYTES // (1024 * 1024)}MB)"
+            )
+    except OSError as err:
+        return f"Error: ไม่สามารถตรวจสอบขนาดไฟล์ได้: {err}"
     with open(path, "r", encoding="utf-8", errors="replace") as handle:
         return handle.read()
 

@@ -19,6 +19,12 @@ from ai_mcp_gateway.tools.filesystem import safe_path
 
 ## ---------- (04) CONSTANTS -------------------------------------------------------- ##
 user32 = ctypes.windll.user32 if sys.platform == "win32" else None
+DEFAULT_WINDOW_MAX_SIZE: Tuple[int, int] = (1920, 1080)
+DEFAULT_SCREENSHOT_MAX_SIZE: Tuple[int, int] = (1280, 1280)
+DEFAULT_IMAGE_MAX_SIZE: Tuple[int, int] = (1280, 1280)
+DEFAULT_WINDOW_JPEG_QUALITY: int = 85
+DEFAULT_SCREENSHOT_JPEG_QUALITY: int = 80
+DEFAULT_IMAGE_JPEG_QUALITY: int = 85
 
 ## ---------- (05) ENUMS ------------------------------------------------------------ ##
 # No module-level enums required.
@@ -225,9 +231,9 @@ def capture_window_bytes(
         sct_img = sct.grab(monitor)
         img = PILImage.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
 
-    img.thumbnail((1920, 1080))
+    img.thumbnail(DEFAULT_WINDOW_MAX_SIZE)
     buffer = io.BytesIO()
-    img.save(buffer, format="JPEG", quality=85)
+    img.save(buffer, format="JPEG", quality=DEFAULT_WINDOW_JPEG_QUALITY)
     return buffer.getvalue(), win_info
 
 
@@ -248,9 +254,9 @@ def read_image_bytes(filepath: str) -> bytes:
         raise FileNotFoundError(f"ไม่พบไฟล์รูปภาพ: {filepath}")
     with PILImage.open(path) as img:
         img = img.convert("RGB")
-        img.thumbnail((1280, 1280))
+        img.thumbnail(DEFAULT_IMAGE_MAX_SIZE)
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=85)
+        img.save(buffer, format="JPEG", quality=DEFAULT_IMAGE_JPEG_QUALITY)
         return buffer.getvalue()
 
 
@@ -274,9 +280,9 @@ def take_screenshot_bytes() -> bytes:
         monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
         sct_img = sct.grab(monitor)
         img = PILImage.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
-        img.thumbnail((1280, 1280))
+        img.thumbnail(DEFAULT_SCREENSHOT_MAX_SIZE)
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=80)
+        img.save(buffer, format="JPEG", quality=DEFAULT_SCREENSHOT_JPEG_QUALITY)
         return buffer.getvalue()
 
 

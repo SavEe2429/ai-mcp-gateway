@@ -63,11 +63,12 @@ def check_localhost_dashboard_guard(path: str, request: Request) -> Optional[JSO
     cfg = get_config()
     client_host = request.client.host if request.client else ""
     is_funnel = request.headers.get("Tailscale-Funnel-Request") is not None
+    allowed_local = set(cfg.security.allowed_local_hosts) | LOCAL_HOSTS
 
     xff = (request.headers.get("x-forwarded-for") or "").strip()
     if xff:
         first_hop = xff.split(",")[0].strip()
-        if first_hop not in LOCAL_HOSTS:
+        if first_hop not in allowed_local:
             return JSONResponse(
                 status_code=403,
                 content={"error": "Dashboard is restricted to localhost only"},
@@ -76,13 +77,13 @@ def check_localhost_dashboard_guard(path: str, request: Request) -> Optional[JSO
     xfh = (request.headers.get("x-forwarded-host") or "").strip().lower()
     if xfh:
         xfh_host = xfh.split(":")[0].strip("[]")
-        if xfh_host not in LOCAL_HOSTS:
+        if xfh_host not in allowed_local:
             return JSONResponse(
                 status_code=403,
                 content={"error": "Dashboard is restricted to localhost only"},
             )
 
-    if is_funnel or client_host not in cfg.security.allowed_local_hosts:
+    if is_funnel or client_host not in allowed_local:
         return JSONResponse(
             status_code=403, content={"error": "Dashboard is restricted to localhost only"}
         )

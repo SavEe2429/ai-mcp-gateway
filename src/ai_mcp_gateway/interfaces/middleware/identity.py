@@ -69,7 +69,9 @@ def detect_ai_provider(request: Request) -> str:
     sess_id = request.headers.get("mcp-session-id")
     if sess_id and sess_id in state.session_ai_clients:
         return state.session_ai_clients[sess_id]
-    if client_ip and client_ip in state.session_ai_clients:
+
+    local_ips = {"127.0.0.1", "::1", "localhost"}
+    if client_ip and client_ip not in local_ips and client_ip in state.session_ai_clients:
         return state.session_ai_clients[client_ip]
     return getattr(state, "last_active_ai", "Gemini") or "Gemini"
 

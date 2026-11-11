@@ -10,6 +10,8 @@ import contextlib
 import json
 import logging
 import os
+import re
+import shlex
 import shutil
 import sys
 import tomllib
@@ -37,6 +39,7 @@ LOGGER: logging.Logger = logging.getLogger(__name__)
 TOOL_DISCOVERY_MAX_ATTEMPTS: int = 6
 TOOL_DISCOVERY_INTERVAL_SECONDS: float = 0.5
 STOP_TIMEOUT_SECONDS: float = 3.0
+GITHUB_NAME_RE: re.Pattern = re.compile(r"^[A-Za-z0-9_.-]+$")
 BASE_GATEWAY_INSTRUCTIONS: str = (
     "# AI MCP Gateway System Instructions\n\n"
     "You are connected to the user's local workspace and registered MCP integrations "
@@ -473,7 +476,14 @@ def _build_stdio_params(config: Dict[str, Any]) -> StdioServerParameters:
         for key, value in extra_env.items():
             env[str(key)] = str(value)
 
-    args = [arg.strip() for arg in args_str.split() if arg.strip()] if args_str else []
+    if args_str:
+        try:
+            args = shlex.split(args_str, posix=(sys.platform != "win32"))
+        except ValueError:
+            args = [arg.strip() for arg in args_str.split() if arg.strip()]
+    else:
+        args = []
+
     return StdioServerParameters(
         command=command,
         args=args,
@@ -483,8 +493,10 @@ def _build_stdio_params(config: Dict[str, Any]) -> StdioServerParameters:
 
 
 def _parse_github_repo_url(github_url: str) -> Tuple[str, str, str]:
-    """Extract (owner, repo, subpath) from a GitHub repository URL."""
+    """Extract and validate (owner, repo, subpath) from a GitHub repository URL."""
     parsed = urlparse(github_url.strip())
+    if parsed.netloc.lower() not in ("github.com", "www.github.com"):
+        raise ValueError(f"Invalid GitHub URL domain: '{parsed.netloc}'. Must target github.com")
     path_parts = [part for part in parsed.path.strip("/").split("/") if part]
     if len(path_parts) < 2:
         raise ValueError(
@@ -492,6 +504,10 @@ def _parse_github_repo_url(github_url: str) -> Tuple[str, str, str]:
         )
     owner = path_parts[0]
     repo = path_parts[1].replace(".git", "")
+    if not GITHUB_NAME_RE.match(owner) or owner.startswith("-"):
+        raise ValueError(f"Invalid GitHub repository owner name: '{owner}'")
+    if not GITHUB_NAME_RE.match(repo) or repo.startswith("-"):
+        raise ValueError(f"Invalid GitHub repository name: '{repo}'")
     subpath = "/".join(path_parts[4:]) if len(path_parts) > 4 and path_parts[2] == "tree" else ""
     return owner, repo, subpath
 

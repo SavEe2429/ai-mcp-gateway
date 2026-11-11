@@ -24,10 +24,11 @@ LOGGER: logging.Logger = logging.getLogger(__name__)
 ## ---------- (07) PUBLIC FUNCTIONS ------------------------------------------------- ##
 def start_tailscale_funnel(port: Optional[int] = None) -> str:
     """Query Tailscale MagicDNS name and start a background Funnel to the target port."""
+    cfg = get_config()
     if port is None:
-        port = get_config().server.port
+        port = cfg.server.port
 
-    fallback_url = f"http://localhost:{port}/mcp"
+    fallback_url = f"http://localhost:{port}{cfg.server.mcp_path}"
     try:
         status_proc = subprocess.run(
             ["tailscale", "status", "--json"],
@@ -39,13 +40,13 @@ def start_tailscale_funnel(port: Optional[int] = None) -> str:
         )
         if status_proc.returncode != 0:
             print("[Tailscale] Unable to query status; verify Tailscale client is running.")
-            return f"http://localhost:{port}/sse"
+            return fallback_url
 
         data = json.loads(status_proc.stdout)
         dns_name = data.get("Self", {}).get("DNSName", "").rstrip(".")
         if not dns_name:
             print("[Tailscale] DNSName unavailable; verify MagicDNS is enabled.")
-            return f"http://localhost:{port}/sse"
+            return fallback_url
 
         funnel_proc = subprocess.run(
             ["tailscale", "funnel", "--bg", str(port)],
@@ -57,7 +58,7 @@ def start_tailscale_funnel(port: Optional[int] = None) -> str:
         )
         if funnel_proc.returncode == 0:
             public_url = f"https://{dns_name}"
-            mcp_url = f"{public_url}/mcp"
+            mcp_url = f"{public_url}{cfg.server.mcp_path}"
             state.public_url = public_url
             state.mcp_url = mcp_url
             return mcp_url

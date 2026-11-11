@@ -95,6 +95,19 @@ class TestMCPProtocol(BaseIntegrationTestCase):
         res = self.client.delete(f"/mcp?token={test_token}")
         self.assertEqual(res.status_code, 401)
 
+    def test_mcp_rejects_payload_too_large(self):
+        """Verify POST /mcp with Content-Length exceeding 16MB is rejected with 413 Payload Too Large."""
+        res = self.client.post(
+            "/mcp",
+            content=b"test",
+            headers={
+                "Content-Length": str(20 * 1024 * 1024),  # 20MB
+                "Content-Type": "application/json",
+            },
+        )
+        self.assertEqual(res.status_code, 413)
+        self.assertIn("Payload Too Large", res.json()["error"])
+
 
 if __name__ == "__main__":
     unittest.main()

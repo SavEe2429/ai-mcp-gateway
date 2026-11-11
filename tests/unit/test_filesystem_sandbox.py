@@ -71,6 +71,23 @@ class TestFilesystemSandbox(unittest.TestCase):
         finally:
             state.set_workspace(old_ws)
 
+    def test_read_file_exceeding_max_limit_rejected(self):
+        """Verify read_file blocks files exceeding MAX_FILE_READ_BYTES."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as temp_root:
+            old_ws = state.workspace_dir
+            state.set_workspace(temp_root)
+            try:
+                test_file = Path(temp_root) / "large.bin"
+                test_file.write_text("small content", encoding="utf-8")
+                # Mock getsize to simulate an oversized file
+                with patch("os.path.getsize", return_value=15 * 1024 * 1024):
+                    res = fs.read_file("large.bin")
+                    self.assertIn("Error: ไฟล์ large.bin มีขนาดใหญ่เกินกำหนด", res)
+            finally:
+                state.set_workspace(old_ws)
+
 
 if __name__ == "__main__":
     unittest.main()

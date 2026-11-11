@@ -1,6 +1,7 @@
 """Security and protocol negotiation ASGI middleware pipeline."""
 
 ## ---------- (01) STANDARD LIBRARY IMPORTS ----------------------------------------- ##
+import asyncio
 import json
 import time
 from datetime import datetime
@@ -25,7 +26,7 @@ from ai_mcp_gateway.interfaces.middleware.shield import (
 )
 
 ## ---------- (04) CONSTANTS -------------------------------------------------------- ##
-# No module-level constants required.
+MAX_REQUEST_BODY_BYTES: int = 16 * 1024 * 1024
 
 ## ---------- (05) ENUMS ------------------------------------------------------------ ##
 # No module-level enums required.
@@ -57,9 +58,23 @@ def create_security_middleware(mcp_server: Any = None) -> Callable:
             request.scope["path"] = "/mcp"
             path = "/mcp"
 
+        if path.startswith("/mcp") and request.method == "POST":
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    if int(content_length) > MAX_REQUEST_BODY_BYTES:
+                        return JSONResponse(
+                            status_code=413,
+                            content={
+                                "error": "Payload Too Large: Maximum allowed request size is 16MB"
+                            },
+                        )
+                except ValueError:
+                    pass
+
         sess_id = _recover_mcp_session_if_expired(request, path, mcp_server)
 
-        token, auth_error_resp = _verify_mcp_bearer_token(request, path)
+        token, auth_error_resp = await _verify_mcp_bearer_token(request, path)
         if auth_error_resp:
             return auth_error_resp
 
@@ -119,7 +134,7 @@ def _recover_mcp_session_if_expired(request: Request, path: str, mcp_server: Any
     return sess_id
 
 
-def _verify_mcp_bearer_token(
+async def _verify_mcp_bearer_token(
     request: Request, path: str
 ) -> tuple[Optional[str], Optional[JSONResponse]]:
     """Validate OAuth Bearer token for /mcp requests and handle DELETE termination."""
@@ -140,7 +155,8 @@ def _verify_mcp_bearer_token(
             status_code=401, content={"error": "Missing Bearer token"}, headers=headers
         )
 
-    if not verify_token(token):
+    is_valid = await asyncio.to_thread(verify_token, token)
+    if not is_valid:
         return token, JSONResponse(
             status_code=403,
             content={"error": "Invalid or expired token"},
@@ -174,11 +190,12 @@ async def _inspect_mcp_post_identity(
             raw_client, source_label, method_name = extract_identity_from_payload(payload)
             if raw_client:
                 detected_client = raw_client
+                local_ips = {"127.0.0.1", "::1", "localhost"}
                 if sess_id:
                     state.register_client(
                         sess_id, detected_client, source=source_label, host=client_host
                     )
-                if client_host:
+                if client_host and client_host not in local_ips:
                     state.register_client(
                         client_host, detected_client, source=source_label, host=client_host
                     )
@@ -214,7 +231,14 @@ def _resolve_ai_identity(
         ai_name = state.session_ai_clients[sess_id]
         detection_source = "Session Cache"
 
-    if not ai_name and client_host and client_host in state.session_ai_clients:
+    local_ips = {"127.0.0.1", "::1", "localhost"}
+
+    if (
+        not ai_name
+        and client_host
+        and client_host not in local_ips
+        and client_host in state.session_ai_clients
+    ):
         ai_name = state.session_ai_clients[client_host]
         detection_source = "IP Cache"
 
@@ -224,7 +248,7 @@ def _resolve_ai_identity(
 
     if sess_id:
         state.register_client(sess_id, ai_name, source=detection_source, host=client_host)
-    if client_host:
+    if client_host and client_host not in local_ips:
         state.register_client(client_host, ai_name, source=detection_source, host=client_host)
 
     return ai_name, detection_source

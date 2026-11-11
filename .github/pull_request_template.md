@@ -1,6 +1,7 @@
 ## Description
 
-Provide a brief summary of the changes proposed in this Pull Request and reference any related issues (e.g., `Closes #12`).
+Provide a brief summary of the changes proposed in this Pull Request and reference any related
+issues (e.g., `Closes #12`).
 
 ## Change Classification
 
@@ -18,15 +19,20 @@ Select the applicable change type matching Conventional Commits:
 
 ## Contributor Checklist
 
-- [ ] Code follows repository architectural boundaries (`src/ai_mcp_gateway/`, clean root, data isolation).
-- [ ] New and refactored Python modules follow `templates/python/script_template.py` (9-section structure) and granular exception handling.
-- [ ] `uv run ruff check src/ tests/ packaging/` passes with zero warnings.
-- [ ] `uv run pytest` passes with all tests hermetic (no personal `data/` or `workspace/` artifacts committed).
+- [ ] Code follows repository architectural boundaries (`src/ai_mcp_gateway/`, clean root, data
+      isolation).
+- [ ] New and refactored Python modules follow `templates/python/script_template.py` (9-section
+      structure) and granular exception handling.
+- [ ] `uv run ruff check src/ tests/ packaging/ templates/ .github/scripts/release/` passes with
+      zero warnings.
+- [ ] `uv run pytest` passes with all tests hermetic (no personal `data/` or `workspace/` artifacts
+      committed).
 - [ ] New text files enforce LF (`\n`) line endings.
 - [ ] `CHANGELOG.md` is updated under `[Unreleased]` when user-facing behavior changes.
 
 ## Reviewer Checklist
 
 - [ ] Architecture and workspace sandbox boundaries (`fs.safe_path()`) are preserved.
-- [ ] Localhost dashboard restrictions (`/ui`, `/api/ui`, `/ws/ui`) and token protections remain intact.
+- [ ] Localhost dashboard restrictions (`/ui`, `/api/ui`, `/ws/ui`) and token protections remain
+      intact.
 - [ ] Tests cover edge cases without relying on local machine state.

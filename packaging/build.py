@@ -15,6 +15,7 @@ from typing import List
 
 ## ---------- (04) CONSTANTS -------------------------------------------------------- ##
 ROOT_DIR: Path = Path(__file__).resolve().parent.parent
+SPEC_DIR: Path = Path(__file__).resolve().parent
 PACKAGE_NAME: str = "ai-mcp-gateway"
 ENTRY_POINT: Path = ROOT_DIR / "src" / "ai_mcp_gateway" / "cli.py"
 DIST_DIR: Path = ROOT_DIR / "out" / PACKAGE_NAME
@@ -55,6 +56,7 @@ def run_packaging(mode: str = "onedir") -> None:
         f"--name={PACKAGE_NAME}",
         f"--distpath={DIST_DIR}",
         f"--workpath={BUILD_DIR}",
+        f"--specpath={SPEC_DIR}",
         f"--paths={ROOT_DIR / 'src'}",
         "--clean",
         "--noconfirm",

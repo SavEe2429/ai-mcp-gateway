@@ -1,5 +1,6 @@
 name: "Parse Release Version"
-description: "Extracts and validates SemVer version, tag, and date from a release branch or manual input."
+description:
+  "Extracts and validates SemVer version, tag, and date from a release branch or manual input."
 
 inputs:
   branch_name:

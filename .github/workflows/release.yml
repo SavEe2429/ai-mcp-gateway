@@ -178,3 +178,15 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Default Branch and Delete Release Branch
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          git merge --no-edit "${{ needs.prepare-python.outputs.tag }}" -m "chore(release): merge ${{ needs.prepare-python.outputs.tag }} [skip ci]"
+          if git push origin main; then
+            git push origin --delete "${{ github.ref_name }}" || true
+          else
+            echo "Notice: Direct push to main was blocked (branch protection). Keeping '${{ github.ref_name }}' for PR merge."
+          fi

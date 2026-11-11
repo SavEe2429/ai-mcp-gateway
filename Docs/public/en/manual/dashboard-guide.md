@@ -1,5 +1,7 @@
 # Web Dashboard User Guide
 
+> Language: **English** | [ภาษาไทย](../../th/manual/dashboard-guide.md)
+
 The Web Dashboard (`http://localhost:3000/ui`) is the local control center for `ai-mcp-gateway`. For security, it only accepts connections from localhost (`127.0.0.1`, `::1`, `localhost`) and rejects external Tailscale Funnel or reverse-proxy requests with `403 Forbidden`.
 
 ---

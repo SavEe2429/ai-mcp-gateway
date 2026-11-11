@@ -1,16 +1,13 @@
 # AI Agent MCP Gateway Documentation
 
-Welcome to the documentation portal for `ai-mcp-gateway` (`v1.0.0`), a secure local bridge exposing sandboxed workspace tools, terminal execution, desktop capture, and external stdio MCP integrations to remote AI assistants over Streamable HTTP and Tailscale Funnel.
+Choose your preferred language / เลือกภาษาของคู่มือการใช้งาน:
 
-## Documentation Tiers
+- **[English Documentation](en/index.md)** — Installation, Tailscale Funnel setup, Web Dashboard guide, and MCP Client integration.
+- **[เอกสารคู่มือภาษาไทย](th/index.md)** — วิธีติดตั้ง การตั้งค่า Tailscale Funnel คู่มือ Web Dashboard และการเชื่อมต่อ AI
 
-### Public User Documentation (`Docs/public/`)
-- [Quick Start Guide](manual/quick-start.md): Download and run the Windows `.exe` or Python package and customize configuration.
-- [Web Dashboard User Guide](manual/dashboard-guide.md): Complete walkthrough of every sidebar control, telemetry card, HITL approval queue, Developer Inspector, MCP Client Hub, and Security Shield.
-- [MCP Integration Guide](manual/mcp-integration.md): Connect Google Gemini, Anthropic Claude, and OpenAI ChatGPT using OAuth 2.1 + PKCE.
-- [Release Notes Index](release-notes/README.md): Versioned release summaries and verification notes.
+---
 
-### Internal Engineering Documentation (`Docs/internal/`)
-- Design: `Docs/internal/design/system-architecture.md`
-- Developer Onboarding: `Docs/internal/development/01.getting_started.md` through `06.troubleshooting.md`
-- Delivery Roadmap: `Docs/internal/pm/roadmap.md`
+## Shared Project Resources
+
+- [Release Notes Index](release-notes/README.md): Versioned release summaries (`v1.0.0+`).
+- [Internal Engineering Docs](../internal/design/system-architecture.md): Architecture, configuration SSOT (`02.environment.md`), testing, deployment, and troubleshooting.

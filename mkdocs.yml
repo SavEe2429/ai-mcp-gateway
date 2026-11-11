@@ -13,10 +13,18 @@ theme:
 
 nav:
   - Home: public/index.md
-  - User Manual:
-      - Quick Start: public/manual/quick-start.md
-      - Dashboard User Guide: public/manual/dashboard-guide.md
-      - MCP Integration: public/manual/mcp-integration.md
+  - English Manual:
+      - Overview: public/en/index.md
+      - Quick Start: public/en/manual/quick-start.md
+      - Tailscale Funnel Setup: public/en/manual/tailscale-setup.md
+      - Dashboard User Guide: public/en/manual/dashboard-guide.md
+      - MCP Integration: public/en/manual/mcp-integration.md
+  - Thai Manual (ภาษาไทย):
+      - หน้าหลัก: public/th/index.md
+      - เริ่มต้นและติดตั้ง: public/th/manual/quick-start.md
+      - ตั้งค่า Tailscale Funnel: public/th/manual/tailscale-setup.md
+      - คู่มือ Web Dashboard: public/th/manual/dashboard-guide.md
+      - เชื่อมต่อ AI (MCP): public/th/manual/mcp-integration.md
   - Release Notes:
       - Index: public/release-notes/README.md
       - v1.0.0: public/release-notes/v1.0.0.md

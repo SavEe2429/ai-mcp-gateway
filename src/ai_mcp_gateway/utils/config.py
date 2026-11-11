@@ -162,6 +162,14 @@ def get_client_secret_file() -> Path:
     return (get_runtime_dir() / cfg.storage.client_secret_file).resolve()
 
 
+def get_lock_file() -> Path:
+    """Resolve absolute Path for single-instance runtime lock file."""
+    override = os.environ.get("GATEWAY_LOCK_FILE")
+    if override:
+        return Path(override).resolve()
+    return (get_data_dir() / "gateway.lock").resolve()
+
+
 def load_or_create_client_secret(
     secret_file: Optional[Path] = None, data_dir: Optional[Path] = None
 ) -> str:
@@ -191,10 +199,20 @@ def load_or_create_client_secret(
         return secrets.token_urlsafe(24)
 
 
+def get_client_id() -> str:
+    """Return configured or environment-overridden OAuth Client ID."""
+    return os.environ.get("MCP_CLIENT_ID", get_config().auth.client_id)
+
+
+def get_client_secret() -> str:
+    """Return active OAuth Client Secret from environment, config, or persistent key file."""
+    return load_or_create_client_secret()
+
+
 ## ---------- (08) PRIVATE FUNCTIONS ------------------------------------------------ ##
 # No private helper functions required.
 
 ## ---------- (09) MAIN EXECUTION --------------------------------------------------- ##
 config: GatewayConfig = get_config()
-CLIENT_ID: str = os.environ.get("MCP_CLIENT_ID", config.auth.client_id)
-CLIENT_SECRET: str = load_or_create_client_secret()
+CLIENT_ID: str = get_client_id()
+CLIENT_SECRET: str = get_client_secret()

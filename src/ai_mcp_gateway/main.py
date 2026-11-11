@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import logging
 import sqlite3
+import subprocess
 import sys
 import webbrowser
 from typing import AsyncIterator
@@ -18,6 +19,10 @@ from mcp import MCPError
 ## ---------- (03) LOCAL APPLICATION/LIBRARY-SPECIFIC IMPORTS ----------------------- ##
 from ai_mcp_gateway.core.auth import router as auth_router
 from ai_mcp_gateway.core.database import cleanup_expired_tokens, init_db
+from ai_mcp_gateway.core.instance_lock import (
+    InstanceAlreadyRunningError,
+    SingleInstanceLock,
+)
 from ai_mcp_gateway.core.mcp_client_manager import client_manager
 from ai_mcp_gateway.core.mcp_server import mcp, record_and_broadcast_log
 from ai_mcp_gateway.core.state import state
@@ -88,6 +93,7 @@ def create_app() -> FastAPI:
     """Construct and configure the FastAPI gateway application."""
     _configure_windows_console_utf8()
     init_db()
+    state.load_banned_ips_from_db()
     cfg = get_config()
 
     fastapi_app = FastAPI(title=cfg.server.title, lifespan=lifespan)
@@ -105,27 +111,51 @@ def create_app() -> FastAPI:
 
 
 def run_server() -> None:
-    """Initialize Tailscale Funnel (if enabled) and start the Uvicorn ASGI server."""
+    """Acquire single-instance lock, initialize Tailscale Funnel, and start Uvicorn."""
     server_cfg = get_config().server
     port = server_cfg.port
     host = server_cfg.host
-    if server_cfg.enable_tailscale_funnel:
-        state.mcp_url = start_tailscale_funnel(port)
-    else:
-        state.mcp_url = f"http://localhost:{port}{server_cfg.mcp_path}"
+    dashboard_url = f"http://localhost:{port}{server_cfg.ui_path}"
 
-    dashboard_url = f"http://localhost:{port}/ui"
-    print("=" * 65)
-    print("AI Agent MCP Gateway Starting")
-    print(f"Local Web Dashboard : {dashboard_url}")
-    print(f"Active Workspace    : {state.workspace_dir}")
-    print(f"MCP Server Endpoint : {state.mcp_url}")
-    print(f"Client ID           : {CLIENT_ID}")
-    print(f"Client Secret       : {_mask_secret(CLIENT_SECRET)} (view full secret in /ui)")
-    print("=" * 65)
+    instance_lock = SingleInstanceLock()
+    try:
+        instance_lock.acquire(port=port)
+    except InstanceAlreadyRunningError as err:
+        print("=" * 65)
+        print("AI Agent MCP Gateway is ALREADY RUNNING!")
+        print(f"Details        : {err.details or 'active lock held'}")
+        print(f"Lock File      : {err.lock_path}")
+        print(f"Web Dashboard  : {dashboard_url}")
+        print("Close the existing instance before launching a second one.")
+        print("=" * 65)
+        raise SystemExit(1) from err
 
-    webbrowser.open(dashboard_url)
-    uvicorn.run(app, host=host, port=port, log_config=_build_uvicorn_log_config())
+    try:
+        if server_cfg.enable_tailscale_funnel:
+            state.mcp_url = start_tailscale_funnel(port)
+        else:
+            state.mcp_url = f"http://localhost:{port}{server_cfg.mcp_path}"
+
+        print("=" * 65)
+        print("AI Agent MCP Gateway Starting")
+        print(f"Local Web Dashboard : {dashboard_url}")
+        print(f"Active Workspace    : {state.workspace_dir}")
+        print(f"MCP Server Endpoint : {state.mcp_url}")
+        print(f"Client ID           : {CLIENT_ID}")
+        print(f"Client Secret       : {_mask_secret(CLIENT_SECRET)} (view full secret in /ui)")
+        print("=" * 65)
+
+        webbrowser.open(dashboard_url)
+        uvicorn.run(app, host=host, port=port, log_config=_build_uvicorn_log_config())
+    finally:
+        if server_cfg.enable_tailscale_funnel:
+            try:
+                from ai_mcp_gateway.core.tunnel import stop_tailscale_funnel
+
+                stop_tailscale_funnel(port)
+            except (subprocess.SubprocessError, OSError) as err:
+                LOGGER.debug("Error stopping Tailscale Funnel on shutdown: %s", err)
+        instance_lock.release()
 
 
 ## ---------- (08) PRIVATE FUNCTIONS ------------------------------------------------ ##
@@ -161,9 +191,11 @@ def _mount_mcp_streamable_http(fastapi_app: FastAPI) -> None:
 
     if not hasattr(mcp, "streamable_http_app"):
         return
+    cfg = get_config()
+    mcp_path = cfg.server.mcp_path
     try:
         streamable_app = mcp.streamable_http_app(
-            streamable_http_path="/mcp",
+            streamable_http_path=mcp_path,
             transport_security=transport_sec,
             session_idle_timeout=None,
         )

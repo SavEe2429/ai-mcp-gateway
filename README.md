@@ -52,7 +52,7 @@ supported web-based AI assistants (**Anthropic Claude**, **Google Gemini**, and 
 
 ## Installation
 
-### Option 1: Standalone Windows Executable (Recommended for End Users)
+### Option 1: Standalone Windows Executable
 
 1. Download `ai-mcp-gateway-windows-x64.zip` from
    [GitHub Releases](https://github.com/SavEe2429/ai-mcp-gateway/releases).

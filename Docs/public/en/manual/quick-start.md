@@ -51,6 +51,18 @@ This guide walks you through installing, configuring, and running `ai-mcp-gatewa
 - [`uv`](https://docs.astral.sh/uv/) package manager
 - _(Optional)_ [Tailscale CLI](https://tailscale.com/download) available in your system `PATH`
 
+If `uv` is not installed yet, install it first (then restart your terminal):
+
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ### Setup & Launch
 
 ```bash

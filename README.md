@@ -81,6 +81,18 @@ supported web-based AI assistants (**Anthropic Claude**, **Google Gemini**, and 
 - [`uv`](https://docs.astral.sh/uv/)
 - _(Optional)_ [Tailscale CLI](https://tailscale.com/download) in `PATH` for remote HTTPS access
 
+If `uv` is not installed yet:
+
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ```bash
 git clone https://github.com/SavEe2429/ai-mcp-gateway.git
 cd ai-mcp-gateway

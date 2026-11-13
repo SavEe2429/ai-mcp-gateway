@@ -54,6 +54,18 @@ AI
 - [`uv`](https://docs.astral.sh/uv/) Package Manager
 - _(ทางเลือก)_ [Tailscale CLI](https://tailscale.com/download) ที่เรียกใช้ผ่าน `PATH` ได้
 
+หากยังไม่มี `uv` ในเครื่อง สามารถติดตั้งได้ด้วยคำสั่งนี้ (จากนั้นเปิดเทอร์มินัลใหม่):
+
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ### ขั้นตอนติดตั้งและรัน
 
 ```bash
